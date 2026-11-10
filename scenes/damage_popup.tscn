@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://bok6uc14d0qgd"]
+
+[ext_resource type="Script" uid="uid://3vbd3ynfmg4k" path="res://scenes/damage_popup.gd" id="1_m8tyv"]
+
+[node name="DamagePopup" type="Node3D" unique_id=1591145841]
+script = ExtResource("1_m8tyv")
+
+[node name="Label3D" type="Label3D" parent="." unique_id=1368765495]
+billboard = 1
+text = "-25
+"
+font_size = 48
+outline_size = 8

@@ -1,0 +1,109 @@
+[gd_scene format=3 uid="uid://ber1ia3va4cf2"]
+
+[ext_resource type="Script" uid="uid://m3pft3666enm" path="res://скрипти/menu.gd" id="1_g3eks"]
+[ext_resource type="Texture2D" uid="uid://dm0bsnn46xyid" path="res://всяка фігня/images (1).jpg" id="2_v86rl"]
+[ext_resource type="Texture2D" uid="uid://bora6oq1uruhr" path="res://всяка фігня/images (2).jpg" id="3_g3eks"]
+[ext_resource type="Texture2D" uid="uid://c8qyfsx5dmfm8" path="res://всяка фігня/images (3).jpg" id="4_g3eks"]
+[ext_resource type="Texture2D" uid="uid://cey1kqv8po8dx" path="res://всяка фігня/images (4).jpg" id="5_g3eks"]
+[ext_resource type="AudioStream" uid="uid://cghaq71taijky" path="res://музикалобби.mp3" id="6_v86rl"]
+[ext_resource type="Script" uid="uid://bes2xs5f5c7mq" path="res://скрипти/music.gd" id="7_v86rl"]
+
+[sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_yex4w"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_u0ya7"]
+
+[node name="Menu" type="Node2D" unique_id=952646397]
+script = ExtResource("1_g3eks")
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1151535799]
+position = Vector2(948, 459)
+
+[node name="Images(1)" type="Sprite2D" parent="." unique_id=700562295]
+position = Vector2(934.5, 484)
+scale = Vector2(4.9666667, 2.6100001)
+texture = ExtResource("2_v86rl")
+
+[node name="Images(2)" type="Sprite2D" parent="." unique_id=786032246]
+position = Vector2(501.50003, 513)
+scale = Vector2(0.6736672, 0.25050506)
+texture = ExtResource("3_g3eks")
+
+[node name="Images(3)" type="Sprite2D" parent="." unique_id=237313107]
+position = Vector2(503, 381.5)
+scale = Vector2(1.1117022, 0.22033897)
+texture = ExtResource("4_g3eks")
+
+[node name="Images(4)" type="Sprite2D" parent="." unique_id=1570843447]
+position = Vector2(499, 652.25)
+scale = Vector2(0.80232567, 0.34496117)
+texture = ExtResource("5_g3eks")
+
+[node name="Button" type="Button" parent="." unique_id=1630604746]
+offset_left = 292.0
+offset_top = 322.0
+offset_right = 714.0
+offset_bottom = 443.0
+text = "play"
+
+[node name="Button2" type="Button" parent="." unique_id=2031429825]
+offset_left = 291.0
+offset_top = 450.0
+offset_right = 710.0
+offset_bottom = 577.0
+text = "dep(magazin)"
+
+[node name="Button3" type="Button" parent="." unique_id=1369967892]
+material = SubResource("CanvasItemMaterial_yex4w")
+offset_left = 288.0
+offset_top = 585.0
+offset_right = 707.0
+offset_bottom = 723.0
+text = "poiti otdihat"
+icon = SubResource("ViewportTexture_u0ya7")
+
+[node name="DjZupRaIii—ВКожеSuperSlowedТекстыПесенКлипыИКонцертыGoogleChrome202609112150(mp3Cut_net)" type="AudioStreamPlayer" parent="." unique_id=1669147106]
+stream = ExtResource("6_v86rl")
+script = ExtResource("7_v86rl")
+
+[node name="Networkpanel" type="Control" parent="." unique_id=1999618153]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HostButton" type="Button" parent="Networkpanel" unique_id=303115861]
+layout_mode = 0
+offset_left = 700.0
+offset_top = 300.0
+offset_right = 950.0
+offset_bottom = 350.0
+text = "створити гру"
+
+[node name="IPInput" type="LineEdit" parent="Networkpanel" unique_id=1327078538]
+layout_mode = 0
+offset_left = 700.0
+offset_top = 360.0
+offset_right = 950.0
+offset_bottom = 410.0
+placeholder_text = "IP хоста"
+
+[node name="JoinButton" type="Button" parent="Networkpanel" unique_id=1083182285]
+layout_mode = 0
+offset_left = 700.0
+offset_top = 420.0
+offset_right = 950.0
+offset_bottom = 470.0
+text = "приєднатися"
+
+[node name="StatusLabel" type="Label" parent="Networkpanel" unique_id=1579319186]
+layout_mode = 0
+offset_left = 700.0
+offset_top = 480.0
+offset_right = 1000.0
+offset_bottom = 540.0
+
+[connection signal="pressed" from="Button" to="." method="_on_button_pressed"]
+[connection signal="pressed" from="Button3" to="." method="_on_button_3_pressed"]

@@ -1,0 +1,193 @@
+[gd_scene format=3 uid="uid://dxae4d305rxpb"]
+
+[ext_resource type="Script" uid="uid://bjov0l68jt3gf" path="res://scenes/world.gd" id="1_fjrip"]
+[ext_resource type="PackedScene" uid="uid://bsk2bosi56aoh" path="res://scenes/character.tscn" id="2_smehm"]
+[ext_resource type="Texture2D" uid="uid://cey1kqv8po8dx" path="res://всяка фігня/images (4).jpg" id="2_tuyoq"]
+[ext_resource type="Texture2D" uid="uid://dm0bsnn46xyid" path="res://всяка фігня/images (1).jpg" id="3_tuyoq"]
+[ext_resource type="Texture2D" uid="uid://bora6oq1uruhr" path="res://всяка фігня/images (2).jpg" id="4_tuyoq"]
+[ext_resource type="Texture2D" uid="uid://c8qyfsx5dmfm8" path="res://всяка фігня/images (3).jpg" id="5_tuyoq"]
+[ext_resource type="Script" uid="uid://b2cify15k7jyh" path="res://weapons/crosschair.gd" id="11_d2wvv"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_u0ya7"]
+font_size = 40
+outline_size = 4
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_n7ghd"]
+albedo_texture = ExtResource("2_tuyoq")
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sh265"]
+sky_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+ground_horizon_color = Color(0.66224277, 0.6717428, 0.6867428, 1)
+
+[sub_resource type="Sky" id="Sky_4flbx"]
+sky_material = SubResource("ProceduralSkyMaterial_sh265")
+
+[sub_resource type="Environment" id="Environment_onrkg"]
+background_mode = 2
+sky = SubResource("Sky_4flbx")
+glow_enabled = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_nvl01"]
+albedo_texture = ExtResource("3_tuyoq")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_t3jnf"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ivps1"]
+albedo_texture = ExtResource("4_tuyoq")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_urp6f"]
+albedo_texture = ExtResource("5_tuyoq")
+
+[node name="main" type="Node3D" unique_id=188924596]
+script = ExtResource("1_fjrip")
+player_scene = ExtResource("2_smehm")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=452230515]
+
+[node name="Control" type="Control" parent="CanvasLayer" unique_id=220033654]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -308.0
+offset_top = -202.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/Control" unique_id=611702125 groups=["ammo_label"]]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -113.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "30/60
+"
+label_settings = SubResource("LabelSettings_u0ya7")
+
+[node name="Label2" type="Label" parent="CanvasLayer/Control" unique_id=2112954562 groups=["health_label"]]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -1576.0
+offset_top = -97.0
+offset_right = -1412.0
+offset_bottom = -32.0
+grow_vertical = 0
+text = "HP: 100"
+label_settings = SubResource("LabelSettings_u0ya7")
+
+[node name="Label3" type="Label" parent="CanvasLayer/Control" unique_id=1201775384 groups=["round_timer_label"]]
+layout_mode = 0
+offset_left = -625.0
+offset_top = -772.0
+offset_right = -560.0
+offset_bottom = -705.0
+theme_override_font_sizes/font_size = 48
+text = "5"
+
+[node name="Label4" type="Label" parent="CanvasLayer/Control" unique_id=2052598995 groups=["score_label"]]
+layout_mode = 0
+offset_left = -900.0
+offset_top = -698.0
+offset_right = -249.0
+offset_bottom = -578.0
+theme_override_font_sizes/font_size = 49
+text = "player 1: 0   |   player 2: 0"
+
+[node name="Label5" type="Label" parent="CanvasLayer/Control" unique_id=841881455 groups=["damage_label"]]
+layout_mode = 0
+offset_left = -331.0
+offset_top = -350.0
+offset_right = -280.0
+offset_bottom = -229.0
+theme_override_font_sizes/font_size = 70
+text = "0"
+
+[node name="camerapivot" type="Node3D" parent="." unique_id=1364620538]
+
+[node name="MAP" type="Node3D" parent="." unique_id=1375172233]
+
+[node name="world" type="Node3D" parent="MAP" unique_id=1344960856 groups=["world"]]
+script = ExtResource("1_fjrip")
+player_scene = ExtResource("2_smehm")
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="MAP/world" unique_id=789756352]
+transform = Transform3D(1, 0, 0, 0, 5.0982685, 0, 0, 0, 2.8206244, -7.0986557, 5.131966, 32.147835)
+material_override = SubResource("StandardMaterial3D_n7ghd")
+use_collision = true
+size = Vector3(42.39525, 1.9018555, 0.001)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="MAP/world" unique_id=1859039697]
+environment = SubResource("Environment_onrkg")
+
+[node name="ground" type="CSGBox3D" parent="MAP/world" unique_id=51731286]
+transform = Transform3D(17.871962, 0, 0, 0, 1, 0, 0, 0, 13.70034, -5.970766, 0, 21.802979)
+material_override = SubResource("StandardMaterial3D_nvl01")
+use_collision = true
+size = Vector3(2.4962444, 1, 1.5698547)
+material = SubResource("StandardMaterial3D_t3jnf")
+
+[node name="CSGBox3D" type="CSGBox3D" parent="MAP/world" unique_id=1249173539]
+transform = Transform3D(1, 0, 0, 0, 5.0982685, 0, 0, 0, 2.8206244, -7.3803444, 5.131966, 11.321172)
+material_override = SubResource("StandardMaterial3D_ivps1")
+use_collision = true
+size = Vector3(41.494987, 1.9018555, 0.001)
+
+[node name="CSGBox3D" type="CSGBox3D" parent="MAP" unique_id=1927783871]
+transform = Transform3D(0.010892406, 0, -2.8204572, 0, 5.0982685, 0, 0.99994075, 0, 0.030723393, -26.74739, 5.2119646, 20.66995)
+use_collision = true
+size = Vector3(22.77768, 1.9018555, 0.001)
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="MAP" unique_id=718165529]
+transform = Transform3D(0.010892406, 0, -2.8204572, 0, 5.0982685, 0, 0.99994075, 0, 0.030723393, 13.507999, 5.2119646, 20.71011)
+material_override = SubResource("StandardMaterial3D_urp6f")
+use_collision = true
+size = Vector3(22.858002, 1.9018555, 0.001)
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1725134308]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.59265, 3.5971236, 33.93755)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1557233407]
+
+[node name="crosschair" type="Control" parent="HUD" unique_id=1485109827]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("11_d2wvv")
+
+[node name="players" type="Node3D" parent="." unique_id=1847277727]
+
+[node name="SpawnPoints" type="Node3D" parent="." unique_id=579596024]
+
+[node name="SpawnPoints1" type="Marker3D" parent="SpawnPoints" unique_id=642483691 groups=["spawn_points"]]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, -24.896639, 2.686276, 21.841568)
+
+[node name="SpawnPoints2" type="Marker3D" parent="SpawnPoints" unique_id=833077653 groups=["spawn_points"]]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 11.432622, 2.4674394, 22.306099)
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1102034679]
+spawn_path = NodePath("../players")
+
+[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="." unique_id=432823369]
+transform = Transform3D(1, 0, 0, 0, -0.46716344, 0.884171, 0, -0.884171, -0.46716344, 0, 22, 12.466396)
+
+[node name="CSGBox3D" type="CSGBox3D" parent="." unique_id=455562595]
+transform = Transform3D(0.010892406, 0, -2.8204572, 0, 5.0982685, 0, 0.99994075, 0, 0.030723393, -18.459352, 2.0127888, 25.463453)
+use_collision = true
+size = Vector3(13.160667, 0.6468506, 0.9589961)
+
+[node name="CSGBox3D3" type="CSGBox3D" parent="." unique_id=177260774]
+transform = Transform3D(0.010892406, 0, -2.8204572, 0, 5.0982685, 0, 0.99994075, 0, 0.030723393, 3.3397448, 2.0127888, 17.141045)
+use_collision = true
+size = Vector3(11.969139, 0.6468506, 0.9589961)
