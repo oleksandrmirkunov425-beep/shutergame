@@ -187,7 +187,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func switch_weapon(weapon: Weapon) -> void:
 	if current_weapon == weapon or is_attacking:
 		return
-	_switch_weapon_rpc.rpc(weapon)
+	Matchmaker.rpc_room(self, "_switch_weapon_rpc", [weapon], false)
 
 
 @rpc("call_local", "any_peer", "reliable")
@@ -241,7 +241,7 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 
 
 func knife_attack() -> void:
-	_knife_attack_rpc.rpc()
+	Matchmaker.rpc_room(self, "_knife_attack_rpc", [], false)
 
 
 @rpc("call_local", "any_peer", "reliable")
@@ -279,7 +279,7 @@ func _knife_attack_rpc() -> void:
 # ОСМОТР ЗБРОЇ (АК47) — виклик по кнопці "view" (F)
 # ------------------------------------------------------------------
 func inspect_weapon() -> void:
-	_inspect_weapon_rpc.rpc()
+	Matchmaker.rpc_room(self, "_inspect_weapon_rpc", [], false)
 
 
 @rpc("call_local", "any_peer", "reliable")
@@ -339,7 +339,7 @@ func shoot() -> void:
 		direction = shoot_direction
 
 	# Спавнимо кулю на ВСІХ клієнтах через RPC (включно з тим, хто стріляв)
-	_spawn_bullet_rpc.rpc(spawn_pos, direction, multiplayer.get_unique_id())
+	Matchmaker.rpc_room(self, "_spawn_bullet_rpc", [spawn_pos, direction, multiplayer.get_unique_id()], false)
 
 	_apply_recoil()
 
@@ -364,7 +364,7 @@ func _spawn_bullet_rpc(spawn_pos: Vector3, direction: Vector3, shooter_id: int) 
 	# щоб фізичний рушій ніколи не бачив scale (1, 1, 2.567).
 	_sanitize_bullet_scale(bullet)
 
-	get_tree().current_scene.add_child(bullet)
+	Matchmaker.room_of(self).add_child(bullet)
 
 	# Чиста орієнтація без масштабу (замість look_at, який успадковує scale).
 	var dir: Vector3 = direction.normalized()

@@ -75,7 +75,14 @@ func _ready() -> void:
 	# поповнення патронів "наосліп" одразу після спавну — раніше через це
 	# траплялись помилки "Node not found", коли пакет ще не встиг дійти
 	# і репліка ноди фізично не існувала на клієнті-отримувачі.
-	var world := get_tree().get_first_node_in_group("world")
+	# Синхронізація позиції — лише гравцям цієї кімнати.
+	var sync := get_node_or_null("MultiplayerSynchronizer") as MultiplayerSynchronizer
+	if sync:
+		sync.public_visibility = false
+		for id in Matchmaker.targets(self):
+			sync.set_visibility_for(id, true)
+
+	var world := _get_world()
 	if world and world.has_method("_on_player_node_ready_rpc"):
 		world._on_player_node_ready_rpc.rpc_id(1, name.to_int())
 
@@ -88,6 +95,11 @@ func _ready() -> void:
 	camera.current = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_update_health_hud()
+
+
+func _get_world() -> Node:
+	var room := Matchmaker.room_of(self)
+	return room.get_node_or_null("MAP/world") if room else null
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -250,8 +262,8 @@ func _apply_damage(amount: float, attacker_id: int = -1) -> void:
 
 
 func _die() -> void:
-	_set_dead_state.rpc(true)
-	_play_death_sound.rpc()
+	Matchmaker.rpc_room(self, "_set_dead_state", [true])
+	Matchmaker.rpc_room(self, "_play_death_sound")
 
 	# Прибираємо зіткнення саме з іншими гравцями (щоб труп їх не штовхав
 	# і не блокував), але лишаємо решту шарів (світ/підлога/стіни) —
@@ -268,7 +280,7 @@ func _die() -> void:
 		death_anim.play("player_Die")
 
 	if is_multiplayer_authority():
-		var world := get_tree().get_first_node_in_group("world")
+		var world := _get_world()
 		if world:
 			if multiplayer.is_server():
 				world.report_death(name.to_int(), last_attacker_id)

@@ -50,7 +50,7 @@ func set_state(state: int, value: int) -> void:
 				timer_label.visible = true
 		State.GAME_OVER:
 			if timer_label:
-				timer_label.text = "Гру завершено!"
+				timer_label.text = "Ви перемогли!" if value == multiplayer.get_unique_id() else "Ви програли"
 				timer_label.visible = true
 			if score_label:
 				score_label.visible = false
@@ -61,10 +61,15 @@ func set_scores(scores: Dictionary) -> void:
 	if not score_label:
 		_find_labels()
 	if score_label:
-		var parts: Array = []
+		var me := multiplayer.get_unique_id()
+		var mine: int = 0
+		var theirs: int = 0
 		for id in scores.keys():
-			parts.append("Гравець %d: %d" % [id, scores[id]])
-		score_label.text = "   |   ".join(parts)
+			if id == me:
+				mine = scores[id]
+			else:
+				theirs = scores[id]
+		score_label.text = "Ви: %d   |   Суперник: %d" % [mine, theirs]
 
 
 func _on_damage_dealt(amount: float, target_name: String) -> void:

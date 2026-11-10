@@ -39,8 +39,6 @@ albedo_texture = ExtResource("4_tuyoq")
 albedo_texture = ExtResource("5_tuyoq")
 
 [node name="main" type="Node3D" unique_id=188924596]
-script = ExtResource("1_fjrip")
-player_scene = ExtResource("2_smehm")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=452230515]
 

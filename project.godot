@@ -20,6 +20,7 @@ config/icon="res://всяка фігня/icon.svg"
 Network="*uid://c4cp5sq22nvfk"
 Hud="*uid://bvfghvi1e2i15"
 EventBus="*uid://b4tfldevnyw1e"
+Matchmaker="*res://autoload/matchmaker.gd"
 
 [display]
 

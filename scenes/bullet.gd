@@ -81,7 +81,7 @@ func _spawn_damage_popup(target: Node, amount: float) -> void:
 		return
 
 	var popup := DAMAGE_POPUP_SCENE.instantiate()
-	get_tree().current_scene.add_child(popup)
+	Matchmaker.room_of(self).add_child(popup)
 
 	var target_3d := target as Node3D
 	popup.global_position = target_3d.global_position + Vector3(0, 1.8, 0)

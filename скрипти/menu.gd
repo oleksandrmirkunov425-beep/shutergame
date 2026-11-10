@@ -1,78 +1,73 @@
-extends Node  # або що там у тебе зверху, не міняй цей рядок
+extends Node
 
 @onready var network_panel: Control = $Networkpanel
 @onready var host_button: Button = $Networkpanel/HostButton
 @onready var ip_input: LineEdit = $Networkpanel/IPInput
-@onready var join_button: Button = $Networkpanel/JoinButton
+@onready var join_button: Button = $Networkpanel/JoinButton   # тепер працює як "Скасувати"
 @onready var status_label: Label = $Networkpanel/StatusLabel
 
-# ВАЖЛИВО: переконайся, що це дійсно твоя головна ігрова сцена (та, де
-# лежать world/players/MultiplayerSpawner) — судячи з логів помилок типу
-# "main/players/1/...", коренева нода називається "main", тобто це,
-# найімовірніше, main.tscn, а не player.tscn.
-const GAME_SCENE := "res://scenes/main.tscn"
+const MAX_CONNECT_ATTEMPTS := 20
+
+var _searching: bool = false
+var _attempts: int = 0
 
 
 func _ready() -> void:
-	# Гравець міг зайти сюди прямо з гри, де курсор захоплений
-	# (Input.mouse_mode — глобальна настройка рушія, вона НЕ скидається
-	# сама при зміні сцени). Без цього рядка курсор лишається
-	# невидимим/захопленим і в меню.
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	if Network.is_dedicated_server():
+		return
 
-	# Браузер не може слухати порт — "створити гру" тільки в desktop-версії.
-	if OS.has_feature("web"):
-		host_button.hide()
+	host_button.hide()
+	ip_input.visible = OS.is_debug_build()  # поле адреси лише для локальних тестів
 	ip_input.placeholder_text = "Адреса сервера (порожньо = онлайн-сервер)"
+	join_button.text = "Скасувати"
+	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-	host_button.pressed.connect(_on_host_pressed)
-	join_button.pressed.connect(_on_join_pressed)
-
-	Network.server_started.connect(_on_server_started)
+	join_button.pressed.connect(_on_cancel_pressed)
+	Network.connection_succeeded.connect(_on_connected)
 	Network.connection_failed.connect(_on_connection_failed)
-	# connection_succeeded більше НЕ використовується для зміни сцени —
-	# сцена клієнта тепер вантажиться ДО підключення (див. _on_join_pressed).
 
 
+# Кнопка "play": підключаємось до сервера і стаємо в чергу на матч 1х1.
 func _on_button_pressed() -> void:
-	# Кнопка "play" тепер відкриває панель хост/приєднатись замість одразу гри
+	if _searching:
+		return
+	_searching = true
+	_attempts = 0
 	network_panel.visible = true
-	status_label.text = ""
+	_connect()
 
 
-func _on_host_pressed() -> void:
-	status_label.text = "Створення гри..."
-	var ip := Network.host_game()
-	if ip == "":
-		status_label.text = "Помилка створення сервера!"
+func _connect() -> void:
+	_attempts += 1
+	status_label.text = "Підключення до сервера... (безкоштовний сервер може прокидатись до хвилини)"
+	Network.join_game(ip_input.text.strip_edges())
 
 
-func _on_join_pressed() -> void:
-	var ip := ip_input.text.strip_edges()
-	# Порожнє поле = публічний сервер на Render (див. Network.PUBLIC_SERVER_URL)
-	status_label.text = "Підключення..."
-
-	# ВАЖЛИВО: тут ми НЕ підключаємось мережею одразу. Спочатку запам'ятовуємо
-	# IP і переходимо на ігрову сцену — щоб вузол "players" (ціль для
-	# MultiplayerSpawner) вже реально існував у дереві клієнта. Тільки
-	# ПІСЛЯ того, як ігрова сцена завантажиться і скаже "я готова"
-	# (world.gd сам викличе Network.finalize_pending_join()), почнеться
-	# справжнє ENet-підключення. Без цього порядку сервер міг "дослати"
-	# клієнту вже існуючого хоста ДО того, як цільовий вузол з'явився —
-	# і такий пакет губився назавжди (Node not found), тому клієнт ніколи
-	# не бачив хоста.
-	Network.request_join(ip)
-	get_tree().change_scene_to_file(GAME_SCENE)
-
-
-func _on_server_started(external_ip: String) -> void:
-	status_label.text = "Сервер запущено! Твоя IP: %s" % external_ip
-	DisplayServer.clipboard_set(external_ip)
-	get_tree().change_scene_to_file(GAME_SCENE)
+func _on_connected() -> void:
+	if not _searching:
+		return
+	status_label.text = "Пошук суперника..."
+	Matchmaker.find_match()
 
 
 func _on_connection_failed() -> void:
-	status_label.text = "Не вдалося підключитись. Перевір IP."
+	if not _searching:
+		return
+	if _attempts >= MAX_CONNECT_ATTEMPTS:
+		_searching = false
+		status_label.text = "Не вдалося підключитись до сервера. Спробуй ще раз."
+		return
+	status_label.text = "Сервер прокидається... спроба %d/%d" % [_attempts + 1, MAX_CONNECT_ATTEMPTS]
+	await get_tree().create_timer(2.0).timeout
+	if _searching:
+		_connect()
+
+
+func _on_cancel_pressed() -> void:
+	_searching = false
+	Matchmaker.cancel_search()
+	network_panel.visible = false
 
 
 func _on_button_3_pressed() -> void:
