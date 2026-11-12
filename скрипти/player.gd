@@ -1,18 +1,25 @@
 extends CharacterBody3D
 
 @export_category("CS2 Movement Settings")
-@export var max_speed: float = 6.0
-@export var jump_velocity: float = 4.5
-@export var ground_acceleration: float = 10.0
-@export var air_acceleration: float = 12.0
-@export var air_speed_cap: float = 0.6
-@export var friction: float = 6.0
-@export var stop_speed: float = 1.5
+@export var max_speed: float = 6.5
+@export var walk_speed: float = 3.4
+@export var crouch_speed: float = 2.8
+@export var jump_velocity: float = 5.6
+@export var custom_gravity: float = 15.5
+@export var ground_acceleration: float = 12.5
+@export var air_acceleration: float = 80.0
+@export var air_speed_cap: float = 1.1
+@export var friction: float = 6.5
+@export var stop_speed: float = 2.0
 
 @export_category("Speed Limits")
-@export var max_velocity: float = 12.0
+@export var max_velocity: float = 13.0
 
-@export_category("Jump Settings")
+@export_category("Jump & Crouch Settings")
+@export var jump_buffer_time: float = 0.12
+@export var coyote_time: float = 0.08
+@export var crouch_head_offset: float = 0.38
+@export var crouch_lerp_speed: float = 14.0
 @export var reset_speed_on_jump: bool = false
 @export var jump_speed_penalty: float = 1.0
 
@@ -46,8 +53,19 @@ var _original_collision_mask: int
 @onready var death_anim: AnimationPlayer = $смерть
 @onready var death_sound: AudioStreamPlayer3D = $deathSound
 
-var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+# ---- Команди (КТ / Т) ----
+# Команду визначає сервер (world.gd) і надсилає через _set_team().
+enum Team { CT, T }
+var team: int = -1   # -1 = ще не отримали від сервера
+
+@onready var model_ct: Node3D = get_node_or_null("operative_ct1")
+@onready var model_t: Node3D = get_node_or_null("terrorist_t1")
+
+var gravity: float = custom_gravity
 var jump_streak: int = 0
+var _jump_buffer_timer: float = 0.0
+var _coyote_timer: float = 0.0
+var _head_base_y: float = 0.607
 
 
 func _enter_tree() -> void:
@@ -55,9 +73,14 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	gravity = custom_gravity
+	_head_base_y = head.position.y
 	health = max_health
 	_original_collision_layer = collision_layer
 	_original_collision_mask = collision_mask
+
+	# Поки команда невідома, обидві моделі сховані (оновиться в _set_team).
+	_apply_team_visual()
 
 	if not health_label:
 		var found = get_tree().get_first_node_in_group("health_label")
@@ -129,34 +152,58 @@ func _physics_process(delta: float) -> void:
 	var input_dir := Input.get_vector("a", "d", "w", "s")
 	var wish_dir := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	if is_on_floor():
-		if velocity.y < 0:
+	var is_crouching := Input.is_key_pressed(KEY_CTRL)
+	var is_walking := Input.is_key_pressed(KEY_SHIFT) and not is_crouching
+
+	var target_head_y := _head_base_y - (crouch_head_offset if is_crouching else 0.0)
+	head.position.y = lerpf(head.position.y, target_head_y, clampf(crouch_lerp_speed * delta, 0.0, 1.0))
+
+	var target_speed := max_speed
+	if is_crouching:
+		target_speed = crouch_speed
+	elif is_walking:
+		target_speed = walk_speed
+
+	if Input.is_action_just_pressed("ui_accept"):
+		_jump_buffer_timer = jump_buffer_time
+	else:
+		_jump_buffer_timer = maxf(_jump_buffer_timer - delta, 0.0)
+
+	var on_floor := is_on_floor()
+	if on_floor:
+		_coyote_timer = coyote_time
+		if velocity.y < 0.0:
 			velocity.y = -0.1
+	else:
+		_coyote_timer = maxf(_coyote_timer - delta, 0.0)
 
-		if Input.is_action_just_pressed("ui_accept"):
-			jump_streak += 1
-			velocity.y = jump_velocity
+	if _jump_buffer_timer > 0.0 and _coyote_timer > 0.0:
+		_jump_buffer_timer = 0.0
+		_coyote_timer = 0.0
+		jump_streak += 1
+		velocity.y = jump_velocity
 
-			if jump_streak > 1:
-				var horizontal = Vector2(velocity.x, velocity.z)
-				horizontal *= jump_speed_penalty
-				velocity.x = horizontal.x
-				velocity.z = horizontal.y
+		if jump_streak > 1:
+			var horizontal = Vector2(velocity.x, velocity.z)
+			horizontal *= jump_speed_penalty
+			velocity.x = horizontal.x
+			velocity.z = horizontal.y
 
-			if reset_speed_on_jump:
-				var horizontal2 = Vector2(velocity.x, velocity.z)
-				if horizontal2.length() > max_speed:
-					horizontal2 = horizontal2.normalized() * max_speed
-					velocity.x = horizontal2.x
-					velocity.z = horizontal2.y
-		else:
+		if reset_speed_on_jump:
+			var horizontal2 = Vector2(velocity.x, velocity.z)
+			if horizontal2.length() > max_speed:
+				horizontal2 = horizontal2.normalized() * max_speed
+				velocity.x = horizontal2.x
+				velocity.z = horizontal2.y
+
+	if on_floor:
+		if velocity.y <= 0.0:
 			jump_streak = 0
-
 		apply_friction(delta)
-		accelerate(wish_dir, max_speed, ground_acceleration, delta, false)
+		accelerate(wish_dir, target_speed, ground_acceleration, delta, false)
 	else:
 		velocity.y -= gravity * delta
-		accelerate(wish_dir, max_speed, air_acceleration, delta, true)
+		accelerate(wish_dir, target_speed, air_acceleration, delta, true)
 
 	clamp_max_velocity()
 	move_and_slide()
@@ -317,6 +364,27 @@ func _revive() -> void:
 	last_attacker_id = -1
 
 	_update_health_hud()
+
+	# Нагадуємо суперникові, який у мене ніж (на випадок, якщо пакет загубився).
+	var weapon_node := get_node_or_null("head/Camera3D")
+	if weapon_node and weapon_node.has_method("announce_knife_skin"):
+		weapon_node.announce_knife_skin()
+
+
+# Показує модель за командою. Власник свого гравця не бачить власне тіло
+# (вид від першої особи), а чужого бачить у моделі його команди.
+func _apply_team_visual() -> void:
+	var is_local := is_multiplayer_authority()
+	if model_ct:
+		model_ct.visible = (team == Team.CT) and not is_local
+	if model_t:
+		model_t.visible = (team == Team.T) and not is_local
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _set_team(value: int) -> void:
+	team = value
+	_apply_team_visual()
 
 
 func _update_health_hud() -> void:

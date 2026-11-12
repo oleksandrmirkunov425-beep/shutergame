@@ -13,6 +13,11 @@ extends Node3D
 
 enum State { WAITING, COUNTDOWN, PLAYING, ROUND_END, GAME_OVER }
 
+# Команди (значення мають збігатися з Player.Team у player.gd)
+const TEAM_CT := 0
+const TEAM_T := 1
+var teams: Dictionary = {}  # player_id:int -> TEAM_CT / TEAM_T
+
 var room: Node                 # корінь кімнати (main)
 var room_id: int = -1
 var room_peers: Array = []     # peer_id гравців ЦІЄЇ кімнати
@@ -76,11 +81,21 @@ func begin_match() -> void:
 	if not multiplayer.is_server():
 		return
 	_match_begun = true
+	_assign_teams()
 	state = State.WAITING
 	_hud(State.WAITING, 0)
 	for id in room_peers.duplicate():
 		_on_player_connected(id)
 	_check_start_conditions()
+
+
+# Тільки сервер: випадково ділимо гравців кімнати на КТ і Т.
+func _assign_teams() -> void:
+	teams.clear()
+	var ids := room_peers.duplicate()
+	ids.shuffle()
+	for i in ids.size():
+		teams[ids[i]] = TEAM_CT if i % 2 == 0 else TEAM_T
 
 
 # ---- розсилки тільки гравцям цієї кімнати ----
@@ -121,6 +136,7 @@ func on_peer_left(id: int) -> void:
 	alive_players.erase(id)
 	_ready_peers.erase(id)
 	_last_spawn_transform.erase(id)
+	teams.erase(id)
 
 	if state == State.GAME_OVER:
 		return
@@ -241,6 +257,8 @@ func _on_player_node_ready_rpc(id: int) -> void:
 	if not is_instance_valid(player):
 		return
 
+	if teams.has(id):
+		player.rpc_id(peer_id, "_set_team", teams[id])
 	if _last_spawn_transform.has(id):
 		player.rpc_id(peer_id, "_set_spawn_transform", _last_spawn_transform[id])
 	if alive_players.get(id, true):
