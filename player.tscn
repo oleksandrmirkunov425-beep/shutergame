@@ -1,0 +1,121 @@
+[gd_scene format=3 uid="uid://dxae4d305rxpb"]
+
+[ext_resource type="Script" uid="uid://bjov0l68jt3gf" path="res://scenes/world.gd" id="1_fjrip"]
+[ext_resource type="PackedScene" uid="uid://c7gm6r6biskpf" path="res://maps/desert_map/desert_courtyard_textured.glb" id="2_g2els"]
+[ext_resource type="PackedScene" uid="uid://bsk2bosi56aoh" path="res://scenes/character.tscn" id="2_smehm"]
+[ext_resource type="Script" uid="uid://b2cify15k7jyh" path="res://weapons/crosschair.gd" id="11_d2wvv"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_u0ya7"]
+font_size = 40
+outline_size = 4
+
+[node name="main" type="Node3D" unique_id=188924596]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=452230515]
+
+[node name="Control" type="Control" parent="CanvasLayer" unique_id=220033654]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -308.0
+offset_top = -202.0
+grow_horizontal = 0
+grow_vertical = 0
+
+[node name="Label" type="Label" parent="CanvasLayer/Control" unique_id=611702125 groups=["ammo_label"]]
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -200.0
+offset_top = -113.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "30/60
+"
+label_settings = SubResource("LabelSettings_u0ya7")
+
+[node name="Label2" type="Label" parent="CanvasLayer/Control" unique_id=2112954562 groups=["health_label"]]
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -1576.0
+offset_top = -97.0
+offset_right = -1412.0
+offset_bottom = -32.0
+grow_vertical = 0
+text = "HP: 100"
+label_settings = SubResource("LabelSettings_u0ya7")
+
+[node name="Label3" type="Label" parent="CanvasLayer/Control" unique_id=1201775384 groups=["round_timer_label"]]
+layout_mode = 0
+offset_left = -625.0
+offset_top = -772.0
+offset_right = -560.0
+offset_bottom = -705.0
+theme_override_font_sizes/font_size = 48
+text = "5"
+
+[node name="Label4" type="Label" parent="CanvasLayer/Control" unique_id=2052598995 groups=["score_label"]]
+layout_mode = 0
+offset_left = -900.0
+offset_top = -698.0
+offset_right = -249.0
+offset_bottom = -578.0
+theme_override_font_sizes/font_size = 49
+text = "player 1: 0   |   player 2: 0"
+
+[node name="Label5" type="Label" parent="CanvasLayer/Control" unique_id=841881455 groups=["damage_label"]]
+layout_mode = 0
+offset_left = -331.0
+offset_top = -350.0
+offset_right = -280.0
+offset_bottom = -229.0
+theme_override_font_sizes/font_size = 70
+text = "0"
+
+[node name="camerapivot" type="Node3D" parent="." unique_id=1364620538]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1725134308]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.59265, 3.5971236, 33.93755)
+
+[node name="HUD" type="CanvasLayer" parent="." unique_id=1557233407]
+
+[node name="crosschair" type="Control" parent="HUD" unique_id=1485109827]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("11_d2wvv")
+
+[node name="players" type="Node3D" parent="." unique_id=1847277727]
+
+[node name="SpawnPoints" type="Node3D" parent="." unique_id=579596024]
+
+[node name="SpawnPoints1" type="Marker3D" parent="SpawnPoints" unique_id=642483691 groups=["spawn_points"]]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 1.451, 4.29845, 21.842)
+
+[node name="SpawnPoints2" type="Marker3D" parent="SpawnPoints" unique_id=833077653 groups=["spawn_points"]]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.05920267, 3.7328682, -23.24076)
+
+[node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1102034679]
+spawn_path = NodePath("../players")
+
+[node name="DirectionalLight3D2" type="DirectionalLight3D" parent="." unique_id=432823369]
+transform = Transform3D(1, 0, 0, 0, -0.46716344, 0.884171, 0, -0.884171, -0.46716344, 0, 22, 12.466396)
+
+[node name="MAP" type="Node3D" parent="." unique_id=706932250]
+
+[node name="world" type="Node3D" parent="MAP" unique_id=415812203]
+script = ExtResource("1_fjrip")
+player_scene = ExtResource("2_smehm")
+
+[node name="desert_courtyard_textured" parent="MAP" unique_id=1895263239 instance=ExtResource("2_g2els")]
