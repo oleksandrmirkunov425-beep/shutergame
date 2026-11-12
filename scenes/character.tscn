@@ -10,6 +10,7 @@
 [ext_resource type="ArrayMesh" uid="uid://dbkn1xv58lb5k" path="res://karanbit.obj" id="7_50cep"]
 [ext_resource type="PackedScene" uid="uid://d1dhc1h8rg3ap" path="res://butterfly_knife/ImageToStl.com_titan_balisong_v4.fbx" id="8_0dpix"]
 [ext_resource type="AudioStream" uid="uid://b643fy1fu5c0q" path="res://200.mp3" id="8_a5ia6"]
+[ext_resource type="PackedScene" uid="uid://t1b8yve1s8pp" path="res://terrorist_t1 (2).glb" id="11_irmqu"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dtglo"]
 
@@ -794,6 +795,9 @@ _data = {
 &"player_Die": SubResource("Animation_a5ia6")
 }
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j60q2"]
+vertex_color_use_as_albedo = true
+
 [node name="player" type="CharacterBody3D" unique_id=603910083]
 transform = Transform3D(0.99999994, 0, 0, 0, 0.99999976, 0, 0, 0, 0.9999998, -9.294729, -0.16395617, 18.788128)
 script = ExtResource("1_2cgup")
@@ -827,7 +831,6 @@ move_spread_deg = null
 move_spread_speed_threshold = null
 recoil_kick_up_deg = null
 recoil_kick_side_deg = null
-recoil_recovery_speed = null
 crosshair_recoil_multiplier = null
 crosshair_spread_multiplier = null
 crosshair_follow_speed = null
@@ -890,9 +893,16 @@ libraries/ = SubResource("AnimationLibrary_0dpix")
 [node name="deathSound" type="AudioStreamPlayer3D" parent="." unique_id=2120044440]
 stream = ExtResource("8_a5ia6")
 
-[node name="ImageToStl_com_operative_ct1" parent="." unique_id=951901837 instance=ExtResource("2_2hyy3")]
+[node name="operative_ct1" parent="." unique_id=951901837 instance=ExtResource("2_2hyy3")]
 transform = Transform3D(-0.99999976, 0, 8.742275e-08, 0, 1, 0, -8.742275e-08, 0, -0.99999976, 0, -0.8503199, 0)
+
+[node name="terrorist_t1" parent="." unique_id=1425196748 instance=ExtResource("11_irmqu")]
+transform = Transform3D(-1, 0, -8.7422784e-08, 0, 1.0000002, 0, 8.742278e-08, 0, -1.0000001, 0, -0.85, 0)
+
+[node name="terrorist_fine" parent="terrorist_t1" index="0" unique_id=1639631599]
+surface_material_override/0 = SubResource("StandardMaterial3D_j60q2")
 
 [editable path="head/Camera3D/AK47"]
 [editable path="head/Camera3D/butterfly"]
-[editable path="ImageToStl_com_operative_ct1"]
+[editable path="operative_ct1"]
+[editable path="terrorist_t1"]

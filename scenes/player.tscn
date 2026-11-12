@@ -1,11 +1,24 @@
 [gd_scene format=3 uid="uid://dxae4d305rxpb"]
 
-[ext_resource type="PackedScene" uid="uid://c7gm6r6biskpf" path="res://maps/desert_map/desert_courtyard_textured.glb" id="2_g2els"]
+[ext_resource type="Script" uid="uid://bjov0l68jt3gf" path="res://scenes/world.gd" id="1_fjrip"]
+[ext_resource type="PackedScene" uid="uid://bsk2bosi56aoh" path="res://scenes/character.tscn" id="2_smehm"]
+[ext_resource type="PackedScene" uid="uid://biuhmymvqp71y" path="res://maps/desert_map/desert_courtyard_textured (1).glb" id="4_dqkch"]
+[ext_resource type="Texture2D" uid="uid://cbitbmoso3ecc" path="res://maps/desert_map/sky.jpg" id="5_qlg0r"]
 [ext_resource type="Script" uid="uid://b2cify15k7jyh" path="res://weapons/crosschair.gd" id="11_d2wvv"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_u0ya7"]
 font_size = 40
 outline_size = 4
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_ashne"]
+panorama = ExtResource("5_qlg0r")
+
+[sub_resource type="Sky" id="Sky_yex4w"]
+sky_material = SubResource("PanoramaSkyMaterial_ashne")
+
+[sub_resource type="Environment" id="Environment_dtglo"]
+background_mode = 2
+sky = SubResource("Sky_yex4w")
 
 [node name="main" type="Node3D" unique_id=188924596]
 
@@ -99,10 +112,10 @@ script = ExtResource("11_d2wvv")
 [node name="SpawnPoints" type="Node3D" parent="." unique_id=579596024]
 
 [node name="SpawnPoints1" type="Marker3D" parent="SpawnPoints" unique_id=642483691 groups=["spawn_points"]]
-transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 1.451, 1.6261241, 21.842)
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 1.451, 4.29845, 21.842)
 
 [node name="SpawnPoints2" type="Marker3D" parent="SpawnPoints" unique_id=833077653 groups=["spawn_points"]]
-transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.05920267, 1.5139327, -23.24076)
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.05920267, 3.7328682, -23.24076)
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1102034679]
 spawn_path = NodePath("../players")
@@ -110,4 +123,13 @@ spawn_path = NodePath("../players")
 [node name="DirectionalLight3D2" type="DirectionalLight3D" parent="." unique_id=432823369]
 transform = Transform3D(1, 0, 0, 0, -0.46716344, 0.884171, 0, -0.884171, -0.46716344, 0, 22, 12.466396)
 
-[node name="desert_courtyard_textured" parent="." unique_id=1895263239 instance=ExtResource("2_g2els")]
+[node name="MAP" type="Node3D" parent="." unique_id=706932250]
+
+[node name="world" type="Node3D" parent="MAP" unique_id=415812203]
+script = ExtResource("1_fjrip")
+player_scene = ExtResource("2_smehm")
+
+[node name="desert_courtyard_textured (1)" parent="MAP" unique_id=910608243 instance=ExtResource("4_dqkch")]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=689066014]
+environment = SubResource("Environment_dtglo")

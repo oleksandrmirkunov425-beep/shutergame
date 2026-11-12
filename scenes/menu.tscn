@@ -8,8 +8,6 @@
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_yex4w"]
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_u0ya7"]
-
 [node name="Menu" type="Node2D" unique_id=952646397]
 script = ExtResource("1_g3eks")
 
@@ -57,7 +55,6 @@ offset_top = 585.0
 offset_right = 707.0
 offset_bottom = 723.0
 text = "poiti otdihat"
-icon = SubResource("ViewportTexture_u0ya7")
 
 [node name="Networkpanel" type="Control" parent="." unique_id=1999618153]
 visible = false
