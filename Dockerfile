@@ -1,7 +1,7 @@
 FROM ubuntu:24.04
 
 # Постав ТУ САМУ версію Godot, що й у твоєму редакторі (Help -> About)
-ARG GODOT_TAG=4.7.2-stable
+ARG GODOT_TAG=4.6-stable
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         wget unzip ca-certificates libfontconfig1 \

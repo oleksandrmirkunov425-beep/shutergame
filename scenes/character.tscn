@@ -1,18 +1,15 @@
 [gd_scene format=3 uid="uid://bsk2bosi56aoh"]
 
 [ext_resource type="Script" uid="uid://cx1kxa4hgxsje" path="res://скрипти/player.gd" id="1_2cgup"]
+[ext_resource type="PackedScene" uid="uid://c4mmhlc7lhk2n" path="res://ImageToStl.com_operative_ct1.fbx" id="2_2hyy3"]
 [ext_resource type="Script" uid="uid://c6naqrl8wivpy" path="res://скрипти/weapon_switch.gd" id="2_a5ia6"]
 [ext_resource type="PackedScene" uid="uid://7vro8l17dj8h" path="res://scenes/bullet.tscn" id="3_0dpix"]
 [ext_resource type="PackedScene" uid="uid://c56ays8ohviw7" path="res://weapons/AK47.fbx" id="4_2hyy3"]
 [ext_resource type="Texture2D" uid="uid://cfopy764jovhp" path="res://всяка фігня/ak-47.jpg" id="5_irmqu"]
 [ext_resource type="Texture2D" uid="uid://db00mxum12ehk" path="res://всяка фігня/karambit.png" id="6_7eonc"]
 [ext_resource type="ArrayMesh" uid="uid://dbkn1xv58lb5k" path="res://karanbit.obj" id="7_50cep"]
+[ext_resource type="PackedScene" uid="uid://d1dhc1h8rg3ap" path="res://butterfly_knife/ImageToStl.com_titan_balisong_v4.fbx" id="8_0dpix"]
 [ext_resource type="AudioStream" uid="uid://b643fy1fu5c0q" path="res://200.mp3" id="8_a5ia6"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4flbx"]
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_u0ya7"]
-material = SubResource("StandardMaterial3D_4flbx")
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dtglo"]
 
@@ -801,9 +798,6 @@ _data = {
 transform = Transform3D(0.99999994, 0, 0, 0, 0.99999976, 0, 0, 0, 0.9999998, -9.294729, -0.16395617, 18.788128)
 script = ExtResource("1_2cgup")
 
-[node name="playermesh" type="MeshInstance3D" parent="." unique_id=1165729893]
-mesh = SubResource("CapsuleMesh_u0ya7")
-
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1163398707]
 shape = SubResource("CapsuleShape3D_dtglo")
 
@@ -811,10 +805,32 @@ shape = SubResource("CapsuleShape3D_dtglo")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.607, 0)
 
 [node name="Camera3D" type="Camera3D" parent="head" unique_id=1785017643]
-transform = Transform3D(1.0023652, 0, 0, 0, 1.0023652, 0, 0, 0, 1.0023652, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 0, -0.22485924)
 cull_mask = 1048573
 script = ExtResource("2_a5ia6")
 bullet_scene = ExtResource("3_0dpix")
+fire_rate = null
+max_shoot_distance = null
+shoot_collision_mask = null
+full_auto = null
+mag_size = null
+mag_count = null
+reload_time = null
+base_spread_deg = null
+max_spread_deg = null
+spread_increase_per_shot = null
+spread_recovery_speed = null
+jump_spread_deg = null
+shots_before_heavy_spread = null
+heavy_spread_increase_per_shot = null
+move_spread_deg = null
+move_spread_speed_threshold = null
+recoil_kick_up_deg = null
+recoil_kick_side_deg = null
+recoil_recovery_speed = null
+crosshair_recoil_multiplier = null
+crosshair_spread_multiplier = null
+crosshair_follow_speed = null
 
 [node name="AK47" parent="head/Camera3D" unique_id=1509668823 instance=ExtResource("4_2hyy3")]
 transform = Transform3D(0.14502347, 0.0016975376, -0.03963185, 0, 0.15220456, 0.0067738984, 0.038316853, -0.006424922, 0.15000053, 0.393, -0.35, -0.38)
@@ -856,6 +872,15 @@ libraries/ = SubResource("AnimationLibrary_50cep")
 transform = Transform3D(0.041932873, -0.14550127, -0.0065613957, 0.11705388, 0.037878342, -0.09007174, 0.08568445, 0.019460695, 0.12625842, 0.35494137, -0.30728978, -0.22051048)
 size = Vector3(0.6690674, 0.5784912, 4.364254)
 
+[node name="butterfly" parent="head/Camera3D" unique_id=1300598417 instance=ExtResource("8_0dpix")]
+transform = Transform3D(-0.025345536, -0.06507702, 0.004752167, 0.061949037, -0.022398235, 0.023677751, -0.020491967, 0.012778822, 0.0657022, 0.25384712, -0.13598067, -0.4118786)
+
+[node name="TITAN_Hand" parent="head/Camera3D/butterfly/Node/Node_2" parent_id_path=PackedInt32Array(1300598417, 1497360293) index="0" unique_id=1869233083]
+transform = Transform3D(0.8480481, -0.084796876, 0.5230907, 0.08479687, 0.9961091, 0.024001786, -0.5230907, 0.024001786, 0.85193896, 0, 0, 0)
+
+[node name="AnimationPlayer" parent="head/Camera3D/butterfly" index="1" unique_id=813056037]
+speed_scale = 2.0
+
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=1421079158]
 replication_config = SubResource("SceneReplicationConfig_2cgup")
 
@@ -865,4 +890,9 @@ libraries/ = SubResource("AnimationLibrary_0dpix")
 [node name="deathSound" type="AudioStreamPlayer3D" parent="." unique_id=2120044440]
 stream = ExtResource("8_a5ia6")
 
+[node name="ImageToStl_com_operative_ct1" parent="." unique_id=951901837 instance=ExtResource("2_2hyy3")]
+transform = Transform3D(-0.99999976, 0, 8.742275e-08, 0, 1, 0, -8.742275e-08, 0, -0.99999976, 0, -0.8503199, 0)
+
 [editable path="head/Camera3D/AK47"]
+[editable path="head/Camera3D/butterfly"]
+[editable path="ImageToStl_com_operative_ct1"]

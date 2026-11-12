@@ -5,8 +5,6 @@
 [ext_resource type="Texture2D" uid="uid://bora6oq1uruhr" path="res://всяка фігня/images (2).jpg" id="3_g3eks"]
 [ext_resource type="Texture2D" uid="uid://c8qyfsx5dmfm8" path="res://всяка фігня/images (3).jpg" id="4_g3eks"]
 [ext_resource type="Texture2D" uid="uid://cey1kqv8po8dx" path="res://всяка фігня/images (4).jpg" id="5_g3eks"]
-[ext_resource type="AudioStream" uid="uid://cghaq71taijky" path="res://музикалобби.mp3" id="6_v86rl"]
-[ext_resource type="Script" uid="uid://bes2xs5f5c7mq" path="res://скрипти/music.gd" id="7_v86rl"]
 
 [sub_resource type="CanvasItemMaterial" id="CanvasItemMaterial_yex4w"]
 
@@ -60,10 +58,6 @@ offset_right = 707.0
 offset_bottom = 723.0
 text = "poiti otdihat"
 icon = SubResource("ViewportTexture_u0ya7")
-
-[node name="DjZupRaIii—ВКожеSuperSlowedТекстыПесенКлипыИКонцертыGoogleChrome202609112150(mp3Cut_net)" type="AudioStreamPlayer" parent="." unique_id=1669147106]
-stream = ExtResource("6_v86rl")
-script = ExtResource("7_v86rl")
 
 [node name="Networkpanel" type="Control" parent="." unique_id=1999618153]
 visible = false
