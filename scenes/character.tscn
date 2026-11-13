@@ -413,6 +413,18 @@ _data = {
 &"view": SubResource("Animation_7eonc")
 }
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_50cep"]
+vertex_color_use_as_albedo = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8yvht"]
+vertex_color_use_as_albedo = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lagn4"]
+vertex_color_use_as_albedo = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_x8k1v"]
+vertex_color_use_as_albedo = true
+
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_2cgup"]
 properties/0/path = NodePath(".:position")
 properties/0/spawn = true
@@ -485,18 +497,6 @@ _data = {
 }
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j60q2"]
-vertex_color_use_as_albedo = true
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_50cep"]
-vertex_color_use_as_albedo = true
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8yvht"]
-vertex_color_use_as_albedo = true
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lagn4"]
-vertex_color_use_as_albedo = true
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_x8k1v"]
 vertex_color_use_as_albedo = true
 
 [node name="player" type="CharacterBody3D" unique_id=603910083]
@@ -573,20 +573,34 @@ libraries/ = SubResource("AnimationLibrary_fulsm")
 [node name="осмотр" type="AnimationPlayer" parent="head/Camera3D/Karanbit" unique_id=536928770]
 libraries/ = SubResource("AnimationLibrary_50cep")
 
-[node name="butterfly" parent="head/Camera3D" unique_id=1300598417 instance=ExtResource("8_0dpix")]
-transform = Transform3D(-0.04536906, -0.08903624, -0.0037682971, 0.08750348, -0.04370757, -0.020803636, 0.016875736, -0.012735804, 0.097739525, 0.57921696, -0.2835245, -0.7267189)
+[node name="balisong" parent="head/Camera3D" unique_id=1300598417 instance=ExtResource("8_0dpix")]
+transform = Transform3D(-0.04536907, -0.08903627, -0.0037682978, 0.08750349, -0.043707583, -0.020803643, 0.016875742, -0.012735808, 0.097739555, 0.527, -0.284, -0.727)
 
-[node name="TITAN_Hand" parent="head/Camera3D/butterfly/Node/Node_2" parent_id_path=PackedInt32Array(1300598417, 1610217023) index="0" unique_id=83548]
-transform = Transform3D(0.8480481, -0.08479692, 0.52309066, 0.08479687, 0.9961091, 0.024001874, -0.5230907, 0.02400171, 0.8519389, 0, 0, 0)
+[node name="TITAN_Hand" parent="head/Camera3D/balisong/Node/Node_2" parent_id_path=PackedInt32Array(1300598417, 1610217023) index="0" unique_id=83548]
+transform = Transform3D(0.8480481, -0.084796876, 0.52309066, 0.08479687, 0.9961091, 0.024001785, -0.5230907, 0.024001786, 0.8519389, 0, 0, 0)
 
-[node name="Handle_A" parent="head/Camera3D/butterfly/Node/Node_2/TITAN_Hand/TITAN_Knife" parent_id_path=PackedInt32Array(1300598417, 1495041892) index="1" unique_id=1483472136]
-transform = Transform3D(1, 4.8984254e-16, 0, -4.8984254e-16, 1, 0, 0, 0, 1, 0, 0, 0)
-
-[node name="Blade" parent="head/Camera3D/butterfly/Node/Node_2/TITAN_Hand/TITAN_Knife" parent_id_path=PackedInt32Array(1300598417, 1495041892) index="2" unique_id=996800803]
-transform = Transform3D(0.86, 2.1063229e-16, 0, -2.1063229e-16, 0.86, 0, 0, 0, 0.86, 0, 0, 0)
-
-[node name="AnimationPlayer" parent="head/Camera3D/butterfly" index="1" unique_id=1484560480]
+[node name="AnimationPlayer" parent="head/Camera3D/balisong" index="1" unique_id=1484560480]
 speed_scale = 1.585
+
+[node name="terrorist_t1_arms2" parent="head" unique_id=1530418382 instance=ExtResource("11_7eonc")]
+transform = Transform3D(-0.9999997, 0, -8.7422755e-08, 0, 1.0000002, 0, 8.742275e-08, 0, -0.9999998, 0.002527237, -0.7992314, -0.7600765)
+
+[node name="terrorist_t1_arms" parent="head/terrorist_t1_arms2" index="0" unique_id=1658520154]
+transform = Transform3D(1, 5.4748487e-08, 1.5557951e-07, -5.4748565e-08, -0.7796221, 0.6262505, 1.555795e-07, -0.62625045, -0.779622, 0, 0.9074849, 0.715641)
+
+[node name="arm_L" parent="head/terrorist_t1_arms2/terrorist_t1_arms" index="0" unique_id=270832447]
+transform = Transform3D(0.7965299, 3.5527137e-15, 0.6045991, -2.9802322e-08, 1.0000001, 0, -0.6045991, 2.9802322e-08, 0.79653, 0.58469296, 1.224, 0.06400013)
+surface_material_override/0 = SubResource("StandardMaterial3D_50cep")
+
+[node name="hand_L" parent="head/terrorist_t1_arms2/terrorist_t1_arms/arm_L" index="0" unique_id=1815856849]
+surface_material_override/0 = SubResource("StandardMaterial3D_8yvht")
+
+[node name="arm_R" parent="head/terrorist_t1_arms2/terrorist_t1_arms" index="1" unique_id=520205446]
+transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -0.6254597, 1.224, 0.06400013)
+surface_material_override/0 = SubResource("StandardMaterial3D_lagn4")
+
+[node name="hand_R" parent="head/terrorist_t1_arms2/terrorist_t1_arms/arm_R" index="0" unique_id=1110707711]
+surface_material_override/0 = SubResource("StandardMaterial3D_x8k1v")
 
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=1421079158]
 replication_config = SubResource("SceneReplicationConfig_2cgup")
@@ -606,28 +620,8 @@ transform = Transform3D(-1, 0, -8.7422784e-08, 0, 1.0000002, 0, 8.742278e-08, 0,
 [node name="terrorist_fine" parent="terrorist_t1" index="0" unique_id=319550286]
 surface_material_override/0 = SubResource("StandardMaterial3D_j60q2")
 
-[node name="terrorist_t1_arms2" parent="terrorist_t1" unique_id=1530418382 instance=ExtResource("11_7eonc")]
-transform = Transform3D(0.9999998, 0, 0, 0, 1, 0, 0, 0, 0.9999998, -0.002527237, 0.65776855, 0.7600765)
-
-[node name="terrorist_t1_arms" parent="terrorist_t1/terrorist_t1_arms2" index="0" unique_id=1658520154]
-transform = Transform3D(1, 5.4748487e-08, 1.5557951e-07, -5.4748565e-08, -0.7796221, 0.6262505, 1.555795e-07, -0.62625045, -0.779622, 0, 0.9074849, 0.715641)
-
-[node name="arm_L" parent="terrorist_t1/terrorist_t1_arms2/terrorist_t1_arms" index="0" unique_id=270832447]
-transform = Transform3D(0.7965299, 3.5527137e-15, 0.6045991, -2.9802322e-08, 1.0000001, 0, -0.6045991, 2.9802322e-08, 0.79653, 0.58469296, 1.224, 0.06400013)
-surface_material_override/0 = SubResource("StandardMaterial3D_50cep")
-
-[node name="hand_L" parent="terrorist_t1/terrorist_t1_arms2/terrorist_t1_arms/arm_L" index="0" unique_id=1815856849]
-surface_material_override/0 = SubResource("StandardMaterial3D_8yvht")
-
-[node name="arm_R" parent="terrorist_t1/terrorist_t1_arms2/terrorist_t1_arms" index="1" unique_id=520205446]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -0.6254597, 1.224, 0.06400013)
-surface_material_override/0 = SubResource("StandardMaterial3D_lagn4")
-
-[node name="hand_R" parent="terrorist_t1/terrorist_t1_arms2/terrorist_t1_arms/arm_R" index="0" unique_id=1110707711]
-surface_material_override/0 = SubResource("StandardMaterial3D_x8k1v")
-
 [editable path="head/Camera3D/AK47"]
-[editable path="head/Camera3D/butterfly"]
+[editable path="head/Camera3D/balisong"]
+[editable path="head/terrorist_t1_arms2"]
 [editable path="operative_ct1"]
 [editable path="terrorist_t1"]
-[editable path="terrorist_t1/terrorist_t1_arms2"]
