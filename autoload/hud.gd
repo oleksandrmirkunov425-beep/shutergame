@@ -20,10 +20,17 @@ func _find_labels() -> void:
 	damage_label = get_tree().get_first_node_in_group("damage_label")
 	if damage_label:
 		damage_label.visible = false
+	# Старий текстовий рахунок більше не потрібен: його замінило табло з ніками.
+	if score_label:
+		score_label.visible = false
+
+
+func _labels_ok() -> bool:
+	return is_instance_valid(timer_label) and is_instance_valid(score_label) and is_instance_valid(damage_label)
 
 
 func set_state(state: int, value: int) -> void:
-	if not timer_label or not score_label:
+	if not _labels_ok():
 		_find_labels()
 
 	match state:
@@ -43,7 +50,7 @@ func set_state(state: int, value: int) -> void:
 			if timer_label:
 				timer_label.visible = false
 			if score_label:
-				score_label.visible = true
+				score_label.visible = false
 		State.ROUND_END:
 			if timer_label:
 				timer_label.text = "Раунд завершено..."
@@ -58,9 +65,10 @@ func set_state(state: int, value: int) -> void:
 
 func set_scores(scores: Dictionary) -> void:
 	_scores = scores
-	if not score_label:
+	if not _labels_ok():
 		_find_labels()
 	if score_label:
+		score_label.visible = false
 		var me := multiplayer.get_unique_id()
 		var mine: int = 0
 		var theirs: int = 0
@@ -73,7 +81,7 @@ func set_scores(scores: Dictionary) -> void:
 
 
 func _on_damage_dealt(amount: float, target_name: String) -> void:
-	if not damage_label:
+	if not _labels_ok():
 		_find_labels()
 	if not damage_label:
 		return

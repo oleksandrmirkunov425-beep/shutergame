@@ -2,7 +2,7 @@ extends Node
 # Вибір ножа (зберігається між запусками гри).
 
 const SAVE_PATH := "user://loadout.cfg"
-const KNIVES: Array = ["karambit", "butterfly"]
+const KNIVES: Array = ["karambit", "bolisong", "butterfly"]
 
 var knife: String = "karambit"
 
