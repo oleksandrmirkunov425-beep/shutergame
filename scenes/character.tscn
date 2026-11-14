@@ -8,10 +8,19 @@
 [ext_resource type="Texture2D" uid="uid://cfopy764jovhp" path="res://всяка фігня/ak-47.jpg" id="5_irmqu"]
 [ext_resource type="Texture2D" uid="uid://db00mxum12ehk" path="res://всяка фігня/karambit.png" id="6_7eonc"]
 [ext_resource type="ArrayMesh" uid="uid://dbkn1xv58lb5k" path="res://karanbit.obj" id="7_50cep"]
-[ext_resource type="PackedScene" uid="uid://d1dhc1h8rg3ap" path="res://butterfly_knife/ImageToStl.com_titan_balisong_v4.fbx" id="8_0dpix"]
+[ext_resource type="PackedScene" uid="uid://d1dhc1h8rg3ap" path="res://bolisong_knife/ImageToStl.com_titan_balisong_v4.fbx" id="8_0dpix"]
 [ext_resource type="AudioStream" uid="uid://b643fy1fu5c0q" path="res://200.mp3" id="8_a5ia6"]
+[ext_resource type="PackedScene" uid="uid://bm5swxfj8wki5" path="res://butterfly_knife/titan_butterfly.glb" id="9_50cep"]
 [ext_resource type="PackedScene" uid="uid://fxnv3m5tbjkr" path="res://playersModels/terrorist_t1_arms.glb" id="11_7eonc"]
 [ext_resource type="PackedScene" uid="uid://t1b8yve1s8pp" path="res://playersModels/terrorist_t1 (2).glb" id="11_irmqu"]
+[ext_resource type="PackedScene" uid="uid://p7ox3scqk3rb" path="res://awp/awp.glb" id="17_cicko"]
+[ext_resource type="Animation" uid="uid://bltagd4ugsrc4" path="res://butterfly_knife/close.res" id="bf_close"]
+[ext_resource type="Animation" uid="uid://bdymbarrjs6el" path="res://butterfly_knife/draw.res" id="bf_draw"]
+[ext_resource type="Animation" uid="uid://cx4r2epsmu656" path="res://butterfly_knife/idle.res" id="bf_idle"]
+[ext_resource type="Animation" uid="uid://do6u7aimiw7vx" path="res://butterfly_knife/inspect_cs2.res" id="bf_inspect_cs2"]
+[ext_resource type="Animation" uid="uid://cnow87mq8y13a" path="res://butterfly_knife/inspect_flourish.res" id="bf_inspect_flourish"]
+[ext_resource type="Animation" uid="uid://dtujicp8vovtg" path="res://butterfly_knife/inspect_valorant.res" id="bf_inspect_valorant"]
+[ext_resource type="Animation" uid="uid://d1pikq5o1asic" path="res://butterfly_knife/spin_long.res" id="bf_spin_long"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_dtglo"]
 
@@ -47,10 +56,58 @@ tracks/1/keys = {
 "update": 0,
 "values": [Vector3(0.41758132, 0, 0)]
 }
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.6254597, 1.224, 0.06400013)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(4.6564358e-10, -2.1537364, -0.008726645)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.58469296, 1.224, 0.06400013)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(2.3738442e-08, 0.6492625, -2.9802326e-08)]
+}
 
 [sub_resource type="Animation" id="Animation_jej6c"]
 resource_name = "knife1_Switch"
-length = 0.8666667
+length = 1.2666667
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -58,7 +115,7 @@ tracks/0/path = NodePath(".:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.16666667, 0.46666667, 0.8),
+"times": PackedFloat32Array(0, 0.16666667, 0.6333333, 0.96666664),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
 "values": [Vector3(0.393, -0.35, -0.38), Vector3(0.4138584, -0.3822267, -0.41576767), Vector3(0.54452515, -0.3822267, -0.41576767), Vector3(0.39297867, -0.35776687, -0.3857479)]
@@ -70,10 +127,58 @@ tracks/1/path = NodePath(".:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0.16666667, 0.33333334, 0.6, 0.8),
+"times": PackedFloat32Array(0.16666667, 0.5, 0.76666665, 0.96666664),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
 "values": [Vector3(0.41758132, 0, 0), Vector3(0.21662325, 0.35985833, 1.0517744), Vector3(0.41578507, -0.039870042, -0.09844363), Vector3(-0.044198588, -0.25752908, 0.0008104994)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.54529285, 1.6501694, 0.31167412)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(4.6564358e-10, -2.1537364, -0.008726645)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.13333334, 0.33333334, 0.5, 0.99),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.15651894, 1.8175411, 0.30768204), Vector3(0.3100176, 0.9837227, 0.08383942), Vector3(0.1237669, 0.9837227, 0.08383942), Vector3(0.3100176, 0.9837227, 0.08383942), Vector3(-0.13167858, 1.1997299, -0.15536976)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.13333334, 0.33333334, 0.5, 0.99),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(2.3738442e-08, 0.6492625, -2.9802326e-08), Vector3(0.4506846, 0.72637725, -0.91214675), Vector3(0.63742185, 0.93946254, -1.1096463), Vector3(0.4506846, 0.72637725, -0.91214675), Vector3(0.34107187, 0.7091366, -0.7225871)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_f1ej7"]
@@ -181,6 +286,54 @@ tracks/2/keys = {
 "update": 0,
 "values": [Vector3(0.14999995, 0.15234956, 0.15529561)]
 }
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.13167858, 1.1997299, -0.15536976)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.54529285, 1.6501694, 0.31167412)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.20837058, -0.5724244, 0.27351573)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.3330231, 2.4503148, 0.33090696)]
+}
 
 [sub_resource type="Animation" id="Animation_0dpix"]
 resource_name = "view"
@@ -192,10 +345,10 @@ tracks/0/path = NodePath(".:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.3, 0.8333333, 1.3),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
+"times": PackedFloat32Array(0, 0.29587454, 0.8333333, 0.8793741, 1.3),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(0.393, -0.35, -0.38), Vector3(-0.06337452, -0.2452713, -0.37999916), Vector3(-0.06337452, -0.2452713, -0.37999916), Vector3(0.393, -0.35, -0.38)]
+"values": [Vector3(0.393, -0.35, -0.38), Vector3(-0.05709839, -0.24671148, -0.5726757), Vector3(-0.05709839, -0.24671148, -0.5726757), Vector3(-0.0126924515, -0.2569018, -0.68224525), Vector3(0.393, -0.35, -0.38)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -204,10 +357,10 @@ tracks/1/path = NodePath(".:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.3, 0.8333333, 1.3),
+"times": PackedFloat32Array(0, 0.2951191, 0.81692404, 1.3),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(-0.043633223, -0.25830874, 0), Vector3(-0.043633223, 1.4759804, 1.2483021e-11), Vector3(-0.043633223, 1.4759804, 1.2483021e-11), Vector3(-0.043633223, -0.25830874, 0)]
+"values": [Vector3(-0.043633223, -0.25830874, 0), Vector3(-0.04363322, 1.1951987, 4.7486165e-10), Vector3(-0.04363322, 1.1951987, 4.7486165e-10), Vector3(-0.043633223, -0.25830874, 0)]
 }
 tracks/2/type = "value"
 tracks/2/imported = false
@@ -220,6 +373,54 @@ tracks/2/keys = {
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1),
 "update": 0,
 "values": [Vector3(0.14999995, 0.15234956, 0.15529561), Vector3(0.12, 0.12, 0.12), Vector3(0.12, 0.12, 0.12), Vector3(0.14999995, 0.15234956, 0.15529561), Vector3(0.14999995, 0.15234956, 0.15529561)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.28196, 0.76666665, 1.3145967),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.132, 1.2, -0.155), Vector3(0.4780779, 1.3545036, 0.0644331), Vector3(0.4780779, 1.3545036, 0.0644331), Vector3(-0.132, 1.2, -0.155)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.28196, 0.76666665, 0.86968726, 0.93949836, 1.1, 1.1666666),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.54529285, 1.6501694, 0.31167412), Vector3(-0.48652935, 1.3400469, 0.3131647), Vector3(-0.48652935, 1.3400469, 0.3131647), Vector3(-0.5307703, 1.37638, 0.27797794), Vector3(-0.5307703, 1.37638, 0.27797794), Vector3(-0.5712881, 1.4710331, 0.32216358), Vector3(-0.5712881, 1.6365156, 0.52817345)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0.28196, 0.76666665),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.20837058, -0.5724244, 0.27351573), Vector3(0.20837058, -0.5724244, 0.27351573)]
+}
+tracks/6/type = "value"
+tracks/6/imported = false
+tracks/6/enabled = true
+tracks/6/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/6/interp = 1
+tracks/6/loop_wrap = true
+tracks/6/keys = {
+"times": PackedFloat32Array(0, 0.28196, 0.76666665, 1.3145967),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.3403392, 0.7086037, -0.7225663), Vector3(0.3330231, 2.4503148, 0.33090696), Vector3(0.3330231, 2.4503148, 0.33090696), Vector3(0.3403392, 0.7086037, -0.7225663)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_2hyy3"]
@@ -257,6 +458,54 @@ tracks/1/keys = {
 "update": 0,
 "values": [Vector3(0.11893597, -0.120706946, -0.09939315)]
 }
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -2.1537364, -0.008726646)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.6254597, 1.224, 0.06400013)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.58469296, 1.224, 0.06400013)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(2.3738444e-08, 0.6492625, -2.9802326e-08)]
+}
 
 [sub_resource type="Animation" id="Animation_d2wvv"]
 resource_name = "swichKNIFE"
@@ -268,10 +517,10 @@ tracks/0/path = NodePath(".:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.3, 0.73333335, 0.93333334),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
+"times": PackedFloat32Array(0, 0.3, 0.35405195, 0.42918667, 0.46666667, 0.56666666),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(0.2954855, -0.42443132, -0.49035645), Vector3(0.2954855, -0.1235764, -0.49035645), Vector3(0.26341724, -0.15507507, -0.5216942), Vector3(0.26341724, -0.17645726, -0.5540924)]
+"values": [Vector3(0.2954855, -0.42443132, -0.49035645), Vector3(0.2954855, -0.1235764, -0.49035645), Vector3(0.27016354, -0.13373497, -0.5543251), Vector3(0.26883698, -0.21166468, -0.5478325), Vector3(0.26348495, -0.18265691, -0.5467148), Vector3(0.27831745, -0.19490457, -0.57922935)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -280,10 +529,58 @@ tracks/1/path = NodePath(".:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.1, 0.43333334, 0.9),
+"times": PackedFloat32Array(0, 0.1, 0.43333334, 0.6),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(0.11893597, -0.120706946, -0.09939315), Vector3(0.11893596, -1.5765953, -0.09939316), Vector3(-0.008377597, -1.149823, 6.2831855), Vector3(-0.06806784, -1.5969763, 6.2831855)]
+"values": [Vector3(0.11868239, -0.12042772, -6.2831855), Vector3(0.11868239, -1.5760323, -6.2831855), Vector3(-0.008726646, -1.150172, 0), Vector3(-0.22672717, -1.388685, -0.2856552)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.2),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(-4.7537704e-08, -2.153736, -0.008726709), Vector3(0, -2.1537364, -0.008726646)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.2),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(-0.53046894, 1.5394354, 0.144948), Vector3(-0.6254597, 1.224, 0.06400013)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0, 0.19686815),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0.4283676, 1.5015545, -0.027942657), Vector3(0.58469296, 1.224, 0.06400013)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0, 0.19686815),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(1.6546018e-07, 0.64926255, 0), Vector3(0, 1.5865043, 0)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_3v2ag"]
@@ -329,10 +626,10 @@ tracks/0/path = NodePath(".:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.099999994, 0.11282088, 0.26666668),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
+"times": PackedFloat32Array(0, 0.06666667, 0.13333334, 0.25257578, 0.36666667),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(0.26341724, -0.15507507, -0.5216942), Vector3(0.26341724, -0.15507507, -0.49881935), Vector3(0.26341724, -0.15507507, -0.45350647), Vector3(0.26341724, -0.15507507, -0.5216942)]
+"values": [Vector3(0.26341724, -0.21344122, -0.5643883), Vector3(0.26341724, -0.15507507, -0.49881935), Vector3(0.26341724, -0.15507507, -0.45350647), Vector3(0.26341724, -0.21344122, -0.5643883), Vector3(0.26341724, -0.15507507, -0.5216942)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -341,10 +638,10 @@ tracks/1/path = NodePath(".:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.099999994, 0.11282088, 0.26666668),
-"transitions": PackedFloat32Array(1, 1, 1, 1),
+"times": PackedFloat32Array(0, 0.06666667, 0.13333334, 0.25257578, 0.36666667),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(-0.06806784, -1.5969763, -0.09424778), Vector3(-0.064577185, -1.5376351, -2.2392573), Vector3(-0.06506936, -1.5460023, -1.936809), Vector3(-0.06806784, -1.5969763, -0.09424778)]
+"values": [Vector3(-0.16511838, -1.5522068, -0.2793065), Vector3(-0.064577185, -1.5376351, -2.2392573), Vector3(-0.06506936, -1.5460023, -1.936809), Vector3(-0.16511838, -1.5522068, -0.2793065), Vector3(-0.06806784, -1.5969763, -0.09424778)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_fulsm"]
@@ -379,9 +676,34 @@ tracks/1/keys = {
 "update": 0,
 "values": [Vector3(-0.06806785, -1.5969763, 6.2831855)]
 }
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.6254597, 1.224, 0.06400013)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -2.1537364, -0.008726646)]
+}
 
 [sub_resource type="Animation" id="Animation_7eonc"]
 resource_name = "view"
+length = 1.1333333
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -389,10 +711,10 @@ tracks/0/path = NodePath(".:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.22),
-"transitions": PackedFloat32Array(1, 1),
+"times": PackedFloat32Array(0, 0.22482021, 0.8, 0.81249, 0.87915665, 0.93333334, 0.96666664, 1.0333333, 1.1333333),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(0.26341724, -0.17645726, -0.5540924), Vector3(0.26341724, -0.17645726, -0.5540924)]
+"values": [Vector3(0.26341724, -0.17645726, -0.5540924), Vector3(0.26341724, -0.20659944, -0.59025), Vector3(0.26341724, -0.20659944, -0.61613655), Vector3(0.26341724, -0.20604771, -0.6150009), Vector3(0.48097515, -0.14022344, -0.6065235), Vector3(0.5129461, -0.26231635, -0.6005707), Vector3(0.5203972, -0.31131458, -0.59771156), Vector3(0.48440838, -0.3049427, -0.59448814), Vector3(0.32802677, -0.2632497, -0.6573448)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -401,16 +723,103 @@ tracks/1/path = NodePath(".:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.24, 3.8333333),
-"transitions": PackedFloat32Array(1, 1, 1),
+"times": PackedFloat32Array(0, 0.22482021, 0.8, 0.81249, 0.8689361, 0.9331774, 1.0288591, 1.1333333, 3.8333333),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(-0.06806785, -1.5969763, 6.2831855), Vector3(-0.06806784, -0.5131268, 6.2831855), Vector3(0.5798722, 2.5804038, -2.0360906)]
+"values": [Vector3(-0.06806784, -1.5969763, 0), Vector3(-0.07639817, -0.68030226, -0.44006002), Vector3(-0.07639817, -0.68030226, -0.44006002), Vector3(-0.07625003, -0.6773294, -0.4322343), Vector3(-0.477437, -0.025004948, -2.686424), Vector3(-0.36826447, -0.64751714, -4.0299654), Vector3(-0.27750736, -0.43982297, -4.886922), Vector3(-0.07679449, -0.6806784, -6.2831855), Vector3(0.5798722, 2.5804038, -2.0360906)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.099999994, 0.21818312, 0.81354034, 0.96666664),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(-0.6254597, 1.224, 0.06400013), Vector3(-0.7417803, 1.223999, 0.06400013), Vector3(-0.7259182, 1.2239991, 0.06400013), Vector3(-0.7259182, 1.2239991, 0.06400013), Vector3(-0.6254597, 1.224, 0.06400013)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0, 0.099999994, 0.21818312, 0.81354034, 0.96666664),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -2.1537364, -0.008726646), Vector3(0.13498192, -2.3812525, -0.12171202), Vector3(0.116575085, -2.3502274, -0.10630476), Vector3(0.116575085, -2.3502274, -0.10630476), Vector3(0, -2.1537364, -0.008726646)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_50cep"]
 _data = {
 &"RESET": SubResource("Animation_irmqu"),
 &"view": SubResource("Animation_7eonc")
+}
+
+[sub_resource type="Animation" id="Animation_u0pwc"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:position")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.49823666, -0.15432036, -0.78993416)]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath(".:rotation")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.4226407, -0.6499815, 1.8891973)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -2.1537364, -0.008726646)]
+}
+tracks/3/type = "value"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(-0.6254597, 1.224, 0.06400013)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_butterfly"]
+_data = {
+&"Close": ExtResource("bf_close"),
+&"Draw": ExtResource("bf_draw"),
+&"Idle": ExtResource("bf_idle"),
+&"Inspect_CS2": ExtResource("bf_inspect_cs2"),
+&"Inspect_Flourish": ExtResource("bf_inspect_flourish"),
+&"Inspect_Valorant": ExtResource("bf_inspect_valorant"),
+&"RESET": SubResource("Animation_u0pwc"),
+&"Spin_Long": ExtResource("bf_spin_long")
 }
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_50cep"]
@@ -504,6 +913,7 @@ transform = Transform3D(0.99999994, 0, 0, 0, 0.99999976, 0, 0, 0, 0.9999998, -9.
 script = ExtResource("1_2cgup")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1163398707]
+transform = Transform3D(0.999996, 0, 0, 0, 1, 0, 0, 0, 0.999996, 0, 0, 0)
 shape = SubResource("CapsuleShape3D_dtglo")
 
 [node name="head" type="Node3D" parent="." unique_id=1936475847]
@@ -514,27 +924,6 @@ transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 0, -0.2248
 cull_mask = 1048573
 script = ExtResource("2_a5ia6")
 bullet_scene = ExtResource("3_0dpix")
-fire_rate = null
-max_shoot_distance = null
-shoot_collision_mask = null
-full_auto = null
-mag_size = null
-mag_count = null
-reload_time = null
-base_spread_deg = null
-max_spread_deg = null
-spread_increase_per_shot = null
-spread_recovery_speed = null
-jump_spread_deg = null
-shots_before_heavy_spread = null
-heavy_spread_increase_per_shot = null
-move_spread_deg = null
-move_spread_speed_threshold = null
-recoil_kick_up_deg = null
-recoil_kick_side_deg = null
-crosshair_recoil_multiplier = null
-crosshair_spread_multiplier = null
-crosshair_follow_speed = null
 
 [node name="AK47" parent="head/Camera3D" unique_id=1509668823 instance=ExtResource("4_2hyy3")]
 transform = Transform3D(0.14502347, 0.0016975376, -0.03963185, 0, 0.15220456, 0.0067738984, 0.038316853, -0.006424922, 0.15000053, 0.393, -0.35, -0.38)
@@ -557,9 +946,10 @@ libraries/ = SubResource("AnimationLibrary_a8ls1")
 
 [node name="осмотр" type="AnimationPlayer" parent="head/Camera3D/AK47" unique_id=615644655]
 libraries/ = SubResource("AnimationLibrary_2hyy3")
+speed_scale = 0.5
 
 [node name="Karanbit" type="MeshInstance3D" parent="head/Camera3D" unique_id=81353519]
-transform = Transform3D(-0.026176937, 0.067992, -0.99734265, 1.7444056e-07, 0.9976843, 0.068015315, 0.99965674, 0.0017802592, -0.02611635, 0.26341724, -0.17645726, -0.5540924)
+transform = Transform3D(-0.02617694, 0.06799198, -0.9973425, 1.7444059e-07, 0.99768394, 0.06801531, 0.9996569, 0.0017802586, -0.026116349, 0.26341724, -0.17645726, -0.5540924)
 visible = false
 material_override = SubResource("StandardMaterial3D_y4r1p")
 mesh = ExtResource("7_50cep")
@@ -573,33 +963,47 @@ libraries/ = SubResource("AnimationLibrary_fulsm")
 [node name="осмотр" type="AnimationPlayer" parent="head/Camera3D/Karanbit" unique_id=536928770]
 libraries/ = SubResource("AnimationLibrary_50cep")
 
-[node name="balisong" parent="head/Camera3D" unique_id=1300598417 instance=ExtResource("8_0dpix")]
-transform = Transform3D(-0.04536907, -0.08903627, -0.0037682978, 0.08750349, -0.043707583, -0.020803643, 0.016875742, -0.012735808, 0.097739555, 0.527, -0.284, -0.727)
+[node name="bolisong" parent="head/Camera3D" unique_id=1300598417 instance=ExtResource("8_0dpix")]
+transform = Transform3D(-0.045369044, -0.08903626, -0.0037682964, 0.088186145, -0.04424634, -0.016293067, 0.012839392, -0.010715125, 0.09859181, 0.32634163, -0.47831622, -0.956089)
+visible = false
 
-[node name="TITAN_Hand" parent="head/Camera3D/balisong/Node/Node_2" parent_id_path=PackedInt32Array(1300598417, 1610217023) index="0" unique_id=83548]
-transform = Transform3D(0.8480481, -0.084796876, 0.52309066, 0.08479687, 0.9961091, 0.024001785, -0.5230907, 0.024001786, 0.8519389, 0, 0, 0)
+[node name="TITAN_Hand" parent="head/Camera3D/bolisong/Node/Node_2" parent_id_path=PackedInt32Array(1300598417, 1446764354) index="0" unique_id=1723182737]
+transform = Transform3D(0.5659843, 0.17794925, 0.80498177, -0.65061486, 0.6960929, 0.3035703, -0.506322, -0.6955492, 0.50975406, 0.0016000001, -0.0032000002, 0.001)
 
-[node name="AnimationPlayer" parent="head/Camera3D/balisong" index="1" unique_id=1484560480]
+[node name="AnimationPlayer" parent="head/Camera3D/bolisong" index="1" unique_id=898344688]
 speed_scale = 1.585
 
-[node name="terrorist_t1_arms2" parent="head" unique_id=1530418382 instance=ExtResource("11_7eonc")]
-transform = Transform3D(-0.9999997, 0, -8.7422755e-08, 0, 1.0000002, 0, 8.742275e-08, 0, -0.9999998, 0.002527237, -0.7992314, -0.7600765)
+[node name="butterfly" parent="head/Camera3D" unique_id=1612357434 instance=ExtResource("9_50cep")]
+transform = Transform3D(-0.026938478, -1.6675733, -1.1038437, 1.7323383, -0.57100564, 0.8203402, -0.99914026, -0.9450656, 1.4520912, 0.49823666, -0.15432036, -0.78993416)
+visible = false
 
-[node name="terrorist_t1_arms" parent="head/terrorist_t1_arms2" index="0" unique_id=1658520154]
+[node name="Knife_Root" parent="head/Camera3D/butterfly" index="0" unique_id=846286799]
+transform = Transform3D(0.99999994, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999999, 0, 0, 0)
+
+[node name="AnimationPlayer" parent="head/Camera3D/butterfly" index="1" unique_id=737131678]
+libraries/ = SubResource("AnimationLibrary_butterfly")
+
+[node name="awp" parent="head/Camera3D" unique_id=798761012 instance=ExtResource("17_cicko")]
+transform = Transform3D(-0.08715576, 0, 0.99619466, 0, 1, 0, -0.99619466, 0, -0.08715576, 0.40776157, -0.42022526, -0.8260784)
+
+[node name="arms" parent="head" unique_id=1530418382 instance=ExtResource("11_7eonc")]
+transform = Transform3D(-0.9999997, 0, -1.5099577e-07, 0, 1.0000002, 0, 1.5099576e-07, 0, -0.9999998, 0.002527237, -0.7992314, -0.7600765)
+
+[node name="terrorist_t1_arms" parent="head/arms" index="0" unique_id=392237748]
 transform = Transform3D(1, 5.4748487e-08, 1.5557951e-07, -5.4748565e-08, -0.7796221, 0.6262505, 1.555795e-07, -0.62625045, -0.779622, 0, 0.9074849, 0.715641)
 
-[node name="arm_L" parent="head/terrorist_t1_arms2/terrorist_t1_arms" index="0" unique_id=270832447]
-transform = Transform3D(0.7965299, 3.5527137e-15, 0.6045991, -2.9802322e-08, 1.0000001, 0, -0.6045991, 2.9802322e-08, 0.79653, 0.58469296, 1.224, 0.06400013)
+[node name="arm_L" parent="head/arms/terrorist_t1_arms" index="0" unique_id=1137929213]
+transform = Transform3D(0.7965297, 3.809079e-08, 0.60459983, -2.9802319e-08, 1.0000027, -2.3738473e-08, -0.604599, 8.8992347e-10, 0.79653084, 0.58469296, 1.224, 0.06400013)
 surface_material_override/0 = SubResource("StandardMaterial3D_50cep")
 
-[node name="hand_L" parent="head/terrorist_t1_arms2/terrorist_t1_arms/arm_L" index="0" unique_id=1815856849]
+[node name="hand_L" parent="head/arms/terrorist_t1_arms/arm_L" index="0" unique_id=471602420]
 surface_material_override/0 = SubResource("StandardMaterial3D_8yvht")
 
-[node name="arm_R" parent="head/terrorist_t1_arms2/terrorist_t1_arms" index="1" unique_id=520205446]
-transform = Transform3D(1, 0, 0, 0, 1.0000001, 0, 0, 0, 1.0000001, -0.6254597, 1.224, 0.06400013)
+[node name="arm_R" parent="head/arms/terrorist_t1_arms" index="1" unique_id=1324057370]
+transform = Transform3D(-0.5504598, -0.0048037944, -0.8348479, -0.008726535, 0.99996275, 0, 0.83481604, 0.007285335, -0.55048084, -0.6254597, 1.224, 0.06400013)
 surface_material_override/0 = SubResource("StandardMaterial3D_lagn4")
 
-[node name="hand_R" parent="head/terrorist_t1_arms2/terrorist_t1_arms/arm_R" index="0" unique_id=1110707711]
+[node name="hand_R" parent="head/arms/terrorist_t1_arms/arm_R" index="0" unique_id=1453831459]
 surface_material_override/0 = SubResource("StandardMaterial3D_x8k1v")
 
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=1421079158]
@@ -621,7 +1025,9 @@ transform = Transform3D(-1, 0, -8.7422784e-08, 0, 1.0000002, 0, 8.742278e-08, 0,
 surface_material_override/0 = SubResource("StandardMaterial3D_j60q2")
 
 [editable path="head/Camera3D/AK47"]
-[editable path="head/Camera3D/balisong"]
-[editable path="head/terrorist_t1_arms2"]
+[editable path="head/Camera3D/bolisong"]
+[editable path="head/Camera3D/butterfly"]
+[editable path="head/Camera3D/awp"]
+[editable path="head/arms"]
 [editable path="operative_ct1"]
 [editable path="terrorist_t1"]

@@ -1,21 +1,51 @@
 extends Control
 
-@export var line_length: float = 8.0
-@export var thickness: float = 2.0
-@export var gap: float = 4.0
-@export var color: Color = Color(0, 1, 0)
+# Малює приціл за налаштуваннями з CrosshairConfig (меню → «Приціл»).
+# weapon_switch.gd лише масштабує цей вузол (розкид) і ховає його в оптичному прицілі.
+
+var _seen_version: int = -1
+
 
 func _ready() -> void:
+	CrosshairConfig.ensure_loaded()
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_update_pivot()
+	resized.connect(_update_pivot)
+
+
+# Масштабування від розкиду має йти від центру екрана, а не від кута.
+func _update_pivot() -> void:
+	pivot_offset = size * 0.5
+	queue_redraw()
+
+
+func _process(_delta: float) -> void:
+	if _seen_version != CrosshairConfig.version:
+		_seen_version = CrosshairConfig.version
+		queue_redraw()
+
 
 func _draw() -> void:
-	var center = get_viewport_rect().size / 2
+	var c: Vector2 = (size * 0.5).round()
+	var t: float = CrosshairConfig.thickness
+	var g: float = CrosshairConfig.gap
+	var l: float = CrosshairConfig.length
+	var col: Color = CrosshairConfig.color
+	col.a = CrosshairConfig.opacity
+	var out_col := Color(0, 0, 0, CrosshairConfig.opacity)
 
-	# Верхня лінія
-	draw_line(center + Vector2(0, -gap - line_length), center + Vector2(0, -gap), color, thickness)
-	# Нижня лінія
-	draw_line(center + Vector2(0, gap), center + Vector2(0, gap + line_length), color, thickness)
-	# Ліва лінія
-	draw_line(center + Vector2(-gap - line_length, 0), center + Vector2(-gap, 0), color, thickness)
-	# Права лінія
-	draw_line(center + Vector2(gap, 0), center + Vector2(gap + line_length, 0), color, thickness)
+	var rects: Array[Rect2] = [
+		Rect2(c.x + g, c.y - t * 0.5, l, t),        # права
+		Rect2(c.x - g - l, c.y - t * 0.5, l, t),    # ліва
+		Rect2(c.x - t * 0.5, c.y - g - l, t, l),    # верхня
+		Rect2(c.x - t * 0.5, c.y + g, t, l),        # нижня
+	]
+	if CrosshairConfig.dot:
+		var d: float = CrosshairConfig.dot_size
+		rects.append(Rect2(c.x - d * 0.5, c.y - d * 0.5, d, d))
+
+	if CrosshairConfig.outline:
+		for r in rects:
+			draw_rect(r.grow(1.0), out_col)
+	for r in rects:
+		draw_rect(r, col)

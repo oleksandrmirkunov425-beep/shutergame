@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://bjov0l68jt3gf" path="res://scenes/world.gd" id="1_fjrip"]
 [ext_resource type="PackedScene" uid="uid://bsk2bosi56aoh" path="res://scenes/character.tscn" id="2_smehm"]
 [ext_resource type="PackedScene" uid="uid://biuhmymvqp71y" path="res://maps/desert_map/desert_courtyard_textured (1).glb" id="4_dqkch"]
-[ext_resource type="Texture2D" uid="uid://cbitbmoso3ecc" path="res://maps/desert_map/sky.jpg" id="5_qlg0r"]
+[ext_resource type="Texture2D" uid="uid://dgpwcsy5g7wg1" path="res://sky.png" id="5_qlg0r"]
 [ext_resource type="Script" uid="uid://b2cify15k7jyh" path="res://weapons/crosschair.gd" id="11_d2wvv"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_u0ya7"]

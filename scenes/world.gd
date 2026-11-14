@@ -38,6 +38,10 @@ var _ready_peers: Dictionary = {}  # player_id:int -> {peer_id:int -> true}
 # для респауну, і для "наздоганяння" пізніх пірів актуальним станом.
 var _last_spawn_transform: Dictionary = {}  # player_id:int -> Transform3D
 
+# Ніки гравців (peer_id -> нік). Заповнює сервер, клієнти отримують разом з рахунком.
+var nicks: Dictionary = {}
+var _scoreboard: Control = null
+
 var _countdown_timer: Timer
 var _round_end_timer: Timer
 var _game_over_timer: Timer
@@ -70,6 +74,12 @@ func _ready() -> void:
 	add_child(_game_over_timer)
 	_game_over_timer.timeout.connect(_on_game_over_timeout)
 
+	# Клієнт: малюємо табло з ніками і надсилаємо серверу свій нік.
+	if not multiplayer.is_server():
+		_make_scoreboard()
+		var my_nick: String = str(Engine.get_meta("player_nick", "Player"))
+		_submit_nick.rpc_id(1, my_nick)
+
 	# Клієнт: сцена кімнати готова — повідомляємо сервер. Коли готові обидва,
 	# сервер викликає begin_match() (так жоден RPC не губиться до появи нод).
 	if not multiplayer.is_server():
@@ -86,6 +96,7 @@ func begin_match() -> void:
 	_hud(State.WAITING, 0)
 	for id in room_peers.duplicate():
 		_on_player_connected(id)
+	_scores_sync()   # щоб табло з ніками з'явилось ще до старту раунду
 	_check_start_conditions()
 
 
@@ -107,6 +118,7 @@ func _hud(new_state: int, value: int) -> void:
 func _scores_sync() -> void:
 	for id in room_peers:
 		_sync_scores.rpc_id(id, scores)
+		_sync_scoreboard.rpc_id(id, scores, nicks)
 
 
 func _on_player_connected(id: int) -> void:
@@ -133,6 +145,7 @@ func on_peer_left(id: int) -> void:
 	for p in room_peers:
 		_rpc_despawn_player.rpc_id(p, id)
 	scores.erase(id)
+	nicks.erase(id)
 	alive_players.erase(id)
 	_ready_peers.erase(id)
 	_last_spawn_transform.erase(id)
@@ -361,3 +374,37 @@ func _sync_hud_state(new_state: int, value: int) -> void:
 @rpc("call_local", "reliable")
 func _sync_scores(new_scores: Dictionary) -> void:
 	Hud.set_scores(new_scores)
+
+
+# ---------- Ніки та табло ----------
+@rpc("any_peer", "reliable")
+func _submit_nick(nick: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var id := multiplayer.get_remote_sender_id()
+	if not room_peers.has(id):
+		return
+	nick = nick.strip_edges().substr(0, 16)
+	nicks[id] = nick if nick != "" else "Player"
+
+
+@rpc("call_local", "reliable")
+func _sync_scoreboard(new_scores: Dictionary, new_nicks: Dictionary) -> void:
+	if _scoreboard == null:
+		return
+	var my_id := multiplayer.get_unique_id()
+	var enemy_id := -1
+	for id in new_scores.keys():
+		if id != my_id:
+			enemy_id = id
+	_scoreboard.call("update_board",
+		str(new_nicks.get(my_id, "Player")), int(new_scores.get(my_id, 0)),
+		str(new_nicks.get(enemy_id, "Player")), int(new_scores.get(enemy_id, 0)))
+
+
+func _make_scoreboard() -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 20
+	add_child(layer)
+	_scoreboard = Scoreboard.new()
+	layer.add_child(_scoreboard)

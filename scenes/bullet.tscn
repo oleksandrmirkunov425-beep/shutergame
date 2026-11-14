@@ -12,12 +12,15 @@ material = SubResource("StandardMaterial3D_jej6c")
 
 [node name="Bullet" type="Area3D" unique_id=1088844065]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 2.567171, 0, 0, 0)
+visible = false
 script = ExtResource("1_mkf8s")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1521685990]
 transform = Transform3D(0.05, 0, 0, 0, 0.05, 0, 0, 0, 0.05, 0, 0, 0)
+visible = false
 shape = SubResource("SphereShape3D_u0ya7")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=486503654]
 transform = Transform3D(0.05, 0, 0, 0, 0.05, 0, 0, 0, 0.05, 0, 0, 0)
+visible = false
 mesh = SubResource("SphereMesh_u0ya7")
