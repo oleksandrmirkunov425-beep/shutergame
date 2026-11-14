@@ -961,6 +961,43 @@ func _add_killfeed_entry(killer: String, weapon_name: String, headshot: bool, vi
 	tw.tween_callback(panel.queue_free)
 
 
+# Кіл-таб: "<нік> left the game" (викликається з world.gd, коли суперник вийшов).
+func show_left_message(nick: String) -> void:
+	var box := _get_killfeed_box()
+	while box.get_child_count() >= KILLFEED_MAX:
+		var oldest := box.get_child(0)
+		box.remove_child(oldest)
+		oldest.queue_free()
+
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_END
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.05, 0.05, 0.07, 0.85)
+	sb.border_color = Color(0.6, 0.6, 0.65)
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 12
+	sb.content_margin_right = 12
+	sb.content_margin_top = 6
+	sb.content_margin_bottom = 6
+	panel.add_theme_stylebox_override("panel", sb)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	panel.add_child(row)
+	row.add_child(_kill_label(nick, 20, Color(1.0, 0.45, 0.45)))
+	row.add_child(_kill_label("left the game", 18, Color(0.8, 0.82, 0.88)))
+
+	box.add_child(panel)
+	panel.modulate.a = 0.0
+	var tw := panel.create_tween()
+	tw.tween_property(panel, "modulate:a", 1.0, 0.15)
+	tw.tween_interval(KILLFEED_SHOW_TIME)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(panel.queue_free)
+
+
 func _weapon_display_name(weapon: int) -> String:
 	match weapon:
 		Weapon.AK47:

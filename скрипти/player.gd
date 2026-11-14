@@ -52,6 +52,11 @@ var _original_collision_mask: int
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var death_anim: AnimationPlayer = $смерть
 @onready var death_sound: AudioStreamPlayer3D = $deathSound
+@onready var death_cam: Camera3D = get_node_or_null("deathcamera")
+
+# Вся візуальна частина смерті (анімація + камера) живе в окремому скрипті.
+const PlayerDeath := preload("res://скрипти/death.gd")
+var _death: RefCounted = null
 
 # ---- Команди (КТ / Т) ----
 # Команду визначає сервер (world.gd) і надсилає через _set_team().
@@ -90,6 +95,7 @@ func _ready() -> void:
 		if other_ui:
 			remove_child(other_ui)
 			other_ui.queue_free()
+	_death = PlayerDeath.new(self, death_anim, death_cam)
 	Hitbox.build_for(self)   # хітбокси голови/тулуба/рук/ніг (на кожній копії гравця)
 	gravity = custom_gravity
 	_head_base_y = head.position.y
@@ -340,10 +346,6 @@ func _die() -> void:
 	if is_multiplayer_authority() and health_label:
 		health_label.text = "Ви загинули..."
 
-	if death_anim:
-		death_anim.stop()
-		death_anim.play("player_Die")
-
 	if is_multiplayer_authority():
 		var world := _get_world()
 		if world:
@@ -359,6 +361,8 @@ func _die() -> void:
 func _set_dead_state(value: bool) -> void:
 	is_dead = value
 	Hitbox.set_enabled(self, not value)   # труп не ловить кулі (на всіх клієнтах)
+	if value and _death:
+		_death.play()   # анімація смерті + камера (на всіх клієнтах)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -369,9 +373,8 @@ func _play_death_sound() -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func _revive() -> void:
-	if death_anim:
-		death_anim.stop()
-		death_anim.seek(0.0, true)
+	if _death:
+		_death.reset()
 
 	Hitbox.set_enabled(self, true)
 	# Повертаємо оригінальні шари зіткнення

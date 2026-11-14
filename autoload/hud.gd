@@ -33,34 +33,14 @@ func set_state(state: int, value: int) -> void:
 	if not _labels_ok():
 		_find_labels()
 
-	match state:
-		State.WAITING:
-			if timer_label:
-				timer_label.text = "Очікування другого гравця..."
-				timer_label.visible = true
-			if score_label:
-				score_label.visible = false
-		State.COUNTDOWN:
-			if timer_label:
-				timer_label.text = str(value)
-				timer_label.visible = true
-			if score_label:
-				score_label.visible = false
-		State.PLAYING:
-			if timer_label:
-				timer_label.visible = false
-			if score_label:
-				score_label.visible = false
-		State.ROUND_END:
-			if timer_label:
-				timer_label.text = "Раунд завершено..."
-				timer_label.visible = true
-		State.GAME_OVER:
-			if timer_label:
-				timer_label.text = "Ви перемогли!" if value == multiplayer.get_unique_id() else "Ви програли"
-				timer_label.visible = true
-			if score_label:
-				score_label.visible = false
+	# Відлік і стани розминки/раунду тепер показує табло (scoreboard.gd) між рахунками.
+	# Тут лишається тільки повідомлення про кінець гри.
+	if timer_label:
+		timer_label.visible = (state == State.GAME_OVER)
+		if state == State.GAME_OVER:
+			timer_label.text = "Ви перемогли!" if value == multiplayer.get_unique_id() else "Ви програли"
+	if score_label:
+		score_label.visible = false
 
 
 func set_scores(scores: Dictionary) -> void:

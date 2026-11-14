@@ -3,7 +3,6 @@
 [ext_resource type="Script" uid="uid://cx1kxa4hgxsje" path="res://скрипти/player.gd" id="1_2cgup"]
 [ext_resource type="PackedScene" uid="uid://c4mmhlc7lhk2n" path="res://playersModels/ImageToStl.com_operative_ct1.fbx" id="2_2hyy3"]
 [ext_resource type="Script" uid="uid://c6naqrl8wivpy" path="res://скрипти/weapon_switch.gd" id="2_a5ia6"]
-[ext_resource type="PackedScene" uid="uid://7vro8l17dj8h" path="res://scenes/bullet.tscn" id="3_0dpix"]
 [ext_resource type="PackedScene" uid="uid://c56ays8ohviw7" path="res://weapons/AK47.fbx" id="4_2hyy3"]
 [ext_resource type="Texture2D" uid="uid://cfopy764jovhp" path="res://всяка фігня/ak-47.jpg" id="5_irmqu"]
 [ext_resource type="Texture2D" uid="uid://db00mxum12ehk" path="res://всяка фігня/karambit.png" id="6_7eonc"]
@@ -845,7 +844,7 @@ properties/2/path = NodePath("head:rotation")
 properties/2/spawn = true
 properties/2/replication_mode = 1
 
-[sub_resource type="Animation" id="Animation_2cgup"]
+[sub_resource type="Animation" id="Animation_cicko"]
 length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
@@ -857,23 +856,36 @@ tracks/0/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(0, 0, 0)]
+"values": [Vector3(-1.5707964, 3.1415927, 0)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
 tracks/1/enabled = true
-tracks/1/path = NodePath(".:position")
+tracks/1/path = NodePath("../deathcamera:position")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(-9.294729, -0.16395617, 18.788128)]
+"values": [Vector3(1.1363382, 0.6064854, 1.5478764)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../terrorist_t1:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0, -3.1415925, 0)]
 }
 
-[sub_resource type="Animation" id="Animation_a5ia6"]
-resource_name = "player_Die"
+[sub_resource type="Animation" id="Animation_bj47h"]
+resource_name = "die"
+length = 0.3
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -881,35 +893,47 @@ tracks/0/path = NodePath(".:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.13333334),
+"times": PackedFloat32Array(0, 0.26666665),
 "transitions": PackedFloat32Array(1, 1),
 "update": 0,
-"values": [Vector3(0, 0, 0), Vector3(1.6108761, 0, 0)]
+"values": [Vector3(0, 3.1415927, 0), Vector3(-1.5707964, 3.1415927, 0)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
-tracks/1/enabled = false
-tracks/1/path = NodePath(".:position")
+tracks/1/enabled = true
+tracks/1/path = NodePath("../deathcamera:position")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(),
-"transitions": PackedFloat32Array(),
+"times": PackedFloat32Array(0, 0.26),
+"transitions": PackedFloat32Array(1, 1),
 "update": 0,
-"values": []
+"values": [Vector3(0.15915775, -0.09795202, 0.65168), Vector3(1.734345, 0.6064856, 2.0865479)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = true
+tracks/2/path = NodePath("../terrorist_t1:rotation")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
+"times": PackedFloat32Array(0, 0.26666665),
+"transitions": PackedFloat32Array(1, 1),
+"update": 0,
+"values": [Vector3(0, 3.1415927, 0), Vector3(-1.5707964, 3.1415927, 0)]
 }
 
-[sub_resource type="AnimationLibrary" id="AnimationLibrary_0dpix"]
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_4lh0q"]
 _data = {
-&"RESET": SubResource("Animation_2cgup"),
-&"player_Die": SubResource("Animation_a5ia6")
+&"RESET": SubResource("Animation_cicko"),
+&"die": SubResource("Animation_bj47h")
 }
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j60q2"]
 vertex_color_use_as_albedo = true
 
 [node name="player" type="CharacterBody3D" unique_id=603910083]
-transform = Transform3D(0.99999994, 0, 0, 0, 0.99999976, 0, 0, 0, 0.9999998, -9.294729, -0.16395617, 18.788128)
+transform = Transform3D(-0.99999994, 0, -8.742276e-08, 0, 0.99999976, 0, 8.742277e-08, 0, -0.9999998, 0, 3.1415927, 0)
 script = ExtResource("1_2cgup")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1163398707]
@@ -923,7 +947,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.607, 0)
 transform = Transform3D(1, 0, 0, 0, 1.0000002, 0, 0, 0, 1.0000001, 0, 0, -0.22485924)
 cull_mask = 1048573
 script = ExtResource("2_a5ia6")
-bullet_scene = ExtResource("3_0dpix")
 
 [node name="AK47" parent="head/Camera3D" unique_id=1509668823 instance=ExtResource("4_2hyy3")]
 transform = Transform3D(0.14502347, 0.0016975376, -0.03963185, 0, 0.15220456, 0.0067738984, 0.038316853, -0.006424922, 0.15000053, 0.393, -0.35, -0.38)
@@ -1009,20 +1032,24 @@ surface_material_override/0 = SubResource("StandardMaterial3D_x8k1v")
 [node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="." unique_id=1421079158]
 replication_config = SubResource("SceneReplicationConfig_2cgup")
 
-[node name="смерть" type="AnimationPlayer" parent="." unique_id=644062265]
-libraries/ = SubResource("AnimationLibrary_0dpix")
+[node name="смерть" type="AnimationPlayer" parent="." unique_id=2059215493]
+root_node = NodePath("../operative_ct1")
+libraries/ = SubResource("AnimationLibrary_4lh0q")
 
 [node name="deathSound" type="AudioStreamPlayer3D" parent="." unique_id=2120044440]
 stream = ExtResource("8_a5ia6")
 
 [node name="operative_ct1" parent="." unique_id=951901837 instance=ExtResource("2_2hyy3")]
-transform = Transform3D(-0.9999997, 0, 8.742274e-08, 0, 1, 0, -8.742274e-08, 0, -0.9999997, 0, -0.85, 0)
+transform = Transform3D(-0.99999946, 8.742276e-08, 3.8213697e-15, 0, -4.371138e-08, 0.9999997, 8.742273e-08, 0.9999998, 4.3711374e-08, 0, -0.8500001, 0)
 
 [node name="terrorist_t1" parent="." unique_id=1425196748 instance=ExtResource("11_irmqu")]
-transform = Transform3D(-1, 0, -8.7422784e-08, 0, 1.0000002, 0, 8.742278e-08, 0, -1.0000001, 0, -0.85, 0)
+transform = Transform3D(-1, 0, -1.5099582e-07, 0, 1.0000002, 0, 1.509958e-07, 0, -1.0000001, 0, -0.85, 0)
 
 [node name="terrorist_fine" parent="terrorist_t1" index="0" unique_id=319550286]
 surface_material_override/0 = SubResource("StandardMaterial3D_j60q2")
+
+[node name="deathcamera" type="Camera3D" parent="." unique_id=347886154]
+transform = Transform3D(0.58006775, -0.38501215, 0.717835, -0.0210117, 0.8738807, 0.48568666, -0.8142973, -0.2968141, 0.49882016, 1.1363382, 0.6064854, 1.5478764)
 
 [editable path="head/Camera3D/AK47"]
 [editable path="head/Camera3D/bolisong"]

@@ -43,6 +43,8 @@ var nicks: Dictionary = {}
 var _scoreboard: Control = null
 
 var _countdown_timer: Timer
+var _round_tick_timer: Timer      # щосекунди рахує час до наступного раунду після смерті
+var _round_end_left: int = 0
 var _round_end_timer: Timer
 var _game_over_timer: Timer
 
@@ -61,6 +63,11 @@ func _ready() -> void:
 	_countdown_timer.wait_time = 1.0
 	add_child(_countdown_timer)
 	_countdown_timer.timeout.connect(_on_countdown_tick)
+
+	_round_tick_timer = Timer.new()
+	_round_tick_timer.wait_time = 1.0
+	add_child(_round_tick_timer)
+	_round_tick_timer.timeout.connect(_on_round_tick)
 
 	_round_end_timer = Timer.new()
 	_round_end_timer.wait_time = round_end_delay
@@ -144,6 +151,7 @@ func on_peer_left(id: int) -> void:
 	_rpc_despawn_player(id)
 	for p in room_peers:
 		_rpc_despawn_player.rpc_id(p, id)
+		_rpc_player_left.rpc_id(p, str(nicks.get(id, "Player")))   # кіл-таб: "<нік> left the game"
 	scores.erase(id)
 	nicks.erase(id)
 	alive_players.erase(id)
@@ -155,6 +163,7 @@ func on_peer_left(id: int) -> void:
 		return
 	_countdown_timer.stop()
 	_round_end_timer.stop()
+	_round_tick_timer.stop()
 	if _match_begun and room_peers.size() == 1:
 		_end_game(room_peers[0])  # суперник вийшов — технічна перемога
 	else:
@@ -183,6 +192,7 @@ func _on_countdown_tick() -> void:
 
 
 func _begin_round() -> void:
+	_round_tick_timer.stop()
 	state = State.PLAYING
 	_hud(State.PLAYING, 0)
 	_scores_sync()
@@ -334,8 +344,10 @@ func report_death(victim_id: int, attacker_id: int) -> void:
 		return
 
 	state = State.ROUND_END
-	_hud(State.ROUND_END, 0)
+	_round_end_left = int(round_end_delay)
+	_hud(State.ROUND_END, _round_end_left)   # значення = секунди до наступного раунду
 	_round_end_timer.start()
+	_round_tick_timer.start()
 
 
 func _schedule_warmup_respawn(victim_id: int) -> void:
@@ -351,12 +363,24 @@ func _schedule_warmup_respawn(victim_id: int) -> void:
 	alive_players[victim_id] = true
 
 
+func _on_round_tick() -> void:
+	if state != State.ROUND_END:
+		_round_tick_timer.stop()
+		return
+	_round_end_left -= 1
+	if _round_end_left > 0:
+		_hud(State.ROUND_END, _round_end_left)
+	else:
+		_round_tick_timer.stop()
+
+
 func _on_round_end_timeout() -> void:
 	if state != State.GAME_OVER:
 		_begin_round()
 
 
 func _end_game(winner_id: int) -> void:
+	_round_tick_timer.stop()
 	state = State.GAME_OVER
 	_hud(State.GAME_OVER, winner_id)
 	_game_over_timer.start()
@@ -369,6 +393,8 @@ func _on_game_over_timeout() -> void:
 @rpc("call_local", "reliable")
 func _sync_hud_state(new_state: int, value: int) -> void:
 	Hud.set_state(new_state, value)
+	if _scoreboard:
+		_scoreboard.call("set_state", new_state, value)
 
 
 @rpc("call_local", "reliable")
@@ -408,3 +434,11 @@ func _make_scoreboard() -> void:
 	add_child(layer)
 	_scoreboard = Scoreboard.new()
 	layer.add_child(_scoreboard)
+
+
+# Кіл-таб: суперник вийшов з гри.
+@rpc("call_local", "reliable")
+func _rpc_player_left(nick: String) -> void:
+	var my_weapon := players_node.get_node_or_null("%d/head/Camera3D" % multiplayer.get_unique_id())
+	if my_weapon and my_weapon.has_method("show_left_message"):
+		my_weapon.show_left_message(nick)
