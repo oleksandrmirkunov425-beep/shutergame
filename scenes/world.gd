@@ -4,14 +4,15 @@ extends Node3D
 
 @export_category("Round Settings")
 @export var countdown_seconds: int = 5
-@export var round_end_delay: float = 5.0
+@export var round_end_delay: float = 3.0   # скільки секунд після смерті до нового раунду
+@export var freeze_seconds: int = 3          # скільки секунд на старті раунду гравці стоять (3-2-1)
 @export var wins_to_end_game: int = 10
 @export var game_over_delay: float = 3.0
 
 @export_category("Warmup Settings")
 @export var warmup_respawn_delay: float = 1.0
 
-enum State { WAITING, COUNTDOWN, PLAYING, ROUND_END, GAME_OVER }
+enum State { WAITING, COUNTDOWN, PLAYING, ROUND_END, GAME_OVER, FREEZE }
 
 # Команди (значення мають збігатися з Player.Team у player.gd)
 const TEAM_CT := 0
@@ -45,6 +46,8 @@ var _scoreboard: Control = null
 var _countdown_timer: Timer
 var _round_tick_timer: Timer      # щосекунди рахує час до наступного раунду після смерті
 var _round_end_left: int = 0
+var _freeze_timer: Timer          # відлік 3-2-1 на старті раунду (гравці стоять)
+var _freeze_left: int = 0
 var _round_end_timer: Timer
 var _game_over_timer: Timer
 
@@ -68,6 +71,11 @@ func _ready() -> void:
 	_round_tick_timer.wait_time = 1.0
 	add_child(_round_tick_timer)
 	_round_tick_timer.timeout.connect(_on_round_tick)
+
+	_freeze_timer = Timer.new()
+	_freeze_timer.wait_time = 1.0
+	add_child(_freeze_timer)
+	_freeze_timer.timeout.connect(_on_freeze_tick)
 
 	_round_end_timer = Timer.new()
 	_round_end_timer.wait_time = round_end_delay
@@ -164,6 +172,7 @@ func on_peer_left(id: int) -> void:
 	_countdown_timer.stop()
 	_round_end_timer.stop()
 	_round_tick_timer.stop()
+	_freeze_timer.stop()
 	if _match_begun and room_peers.size() == 1:
 		_end_game(room_peers[0])  # суперник вийшов — технічна перемога
 	else:
@@ -193,14 +202,46 @@ func _on_countdown_tick() -> void:
 
 func _begin_round() -> void:
 	_round_tick_timer.stop()
-	state = State.PLAYING
-	_hud(State.PLAYING, 0)
 	_scores_sync()
 
+	# Всіх гравців ставимо на спавни...
 	var ids := room_peers.duplicate()
 	for i in ids.size():
 		_spawn_or_respawn_player(ids[i], i)
 		alive_players[ids[i]] = true
+
+	# ...і на кілька секунд "заморожуємо": можна дивитись, але не рухатись і не стріляти.
+	_start_freeze()
+
+
+func _start_freeze() -> void:
+	state = State.FREEZE
+	_freeze_left = freeze_seconds
+	_set_frozen_all(true)
+	_hud(State.FREEZE, _freeze_left)
+	_freeze_timer.start()
+
+
+func _on_freeze_tick() -> void:
+	if state != State.FREEZE:
+		_freeze_timer.stop()
+		return
+	_freeze_left -= 1
+	if _freeze_left > 0:
+		_hud(State.FREEZE, _freeze_left)
+		return
+	_freeze_timer.stop()
+	_set_frozen_all(false)
+	state = State.PLAYING
+	_hud(State.PLAYING, 0)
+
+
+# Тільки сервер: кажемо власнику кожного гравця, що він (не) може рухатись.
+func _set_frozen_all(value: bool) -> void:
+	for id in room_peers:
+		var player := players_node.get_node_or_null(str(id))
+		if is_instance_valid(player) and _ready_peers.get(id, {}).has(id):
+			player.rpc_id(id, "_set_frozen", value)
 
 
 func _spawn_or_respawn_player(id: int, spawn_index: int) -> void:
@@ -381,6 +422,7 @@ func _on_round_end_timeout() -> void:
 
 func _end_game(winner_id: int) -> void:
 	_round_tick_timer.stop()
+	_freeze_timer.stop()
 	state = State.GAME_OVER
 	_hud(State.GAME_OVER, winner_id)
 	_game_over_timer.start()

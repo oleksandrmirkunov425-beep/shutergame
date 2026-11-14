@@ -289,6 +289,11 @@ func _has_authority() -> bool:
 	return player_body != null and player_body.is_multiplayer_authority()
 
 
+# На старті раунду (3-2-1) стрільба заблокована.
+func _is_frozen() -> bool:
+	return player_body != null and "frozen" in player_body and player_body.frozen
+
+
 func _process(delta: float) -> void:
 	_time_since_last_shot += delta
 
@@ -315,7 +320,7 @@ func _process(delta: float) -> void:
 	if _weapon_menu_open and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_close_weapon_menu(false)
 
-	if full_auto and current_weapon == Weapon.AK47 and not _weapon_menu_open and Input.is_action_pressed("shoot"):
+	if full_auto and current_weapon == Weapon.AK47 and not _weapon_menu_open and not _is_frozen() and Input.is_action_pressed("shoot"):
 		if can_shoot and not is_reloading and not is_drawing:
 			shoot()
 
@@ -350,6 +355,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		switch_weapon(primary_weapon)
 	elif event.is_action_pressed("slot_knife") and not is_attacking:
 		switch_weapon(Weapon.KNIFE)
+
+	if event.is_action_pressed("shoot") and _is_frozen():
+		return
 
 	if event.is_action_pressed("shoot"):
 		if current_weapon == Weapon.AK47 and can_shoot and not is_reloading and not is_drawing:

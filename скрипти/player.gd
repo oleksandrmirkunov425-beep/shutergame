@@ -42,6 +42,7 @@ extends CharacterBody3D
 
 var health: float = max_health
 var is_dead: bool = false
+var frozen: bool = false   # на старті раунду стоїмо 3-2-1 (ставить сервер через _set_frozen)
 var last_attacker_id: int = -1
 
 var _original_collision_layer: int
@@ -171,6 +172,17 @@ func _physics_process(delta: float) -> void:
 
 	if is_dead:
 		_process_death_fall(delta)
+		return
+
+	if frozen:
+		# Стоїмо на місці (можна лише крутити камеру), гравітація працює.
+		velocity.x = 0.0
+		velocity.z = 0.0
+		if is_on_floor():
+			velocity.y = 0.0
+		else:
+			velocity.y -= gravity * delta
+		move_and_slide()
 		return
 
 	var input_dir := Input.get_vector("a", "d", "w", "s")
@@ -369,6 +381,11 @@ func _set_dead_state(value: bool) -> void:
 func _play_death_sound() -> void:
 	if death_sound:
 		death_sound.play()
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _set_frozen(value: bool) -> void:
+	frozen = value
 
 
 @rpc("any_peer", "call_local", "reliable")

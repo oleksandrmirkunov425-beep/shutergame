@@ -151,8 +151,9 @@ func _hide_big() -> void:
 	_big_label.modulate.a = 0.0
 
 
-# Стан гри з сервера: 0 очікування, 1 відлік, 2 раунд іде, 3 пауза після смерті
-# (value = секунди до наступного раунду), 4 кінець гри.
+# Стан гри з сервера: 0 очікування, 1 відлік розминки, 2 раунд іде,
+# 3 пауза після смерті (value = секунди до нового раунду),
+# 4 кінець гри, 5 "заморозка" на старті раунду (3-2-1 великими цифрами).
 func set_state(state: int, value: int) -> void:
 	match state:
 		0:
@@ -160,10 +161,11 @@ func set_state(state: int, value: int) -> void:
 			_hide_big()
 		1, 3:
 			_set_timer(str(value), COLOR_TIMER)
-			if value >= 1 and value <= 3:
+			_hide_big()
+		5:
+			_set_timer(str(value), COLOR_TIMER)
+			if value >= 1:
 				_show_big(value)
-			else:
-				_hide_big()
 		_:
 			_set_timer("VS", Color.WHITE)
 			_hide_big()
