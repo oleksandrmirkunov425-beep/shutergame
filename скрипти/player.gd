@@ -6,10 +6,10 @@ extends CharacterBody3D
 @export var crouch_speed: float = 2.8
 @export var jump_velocity: float = 5.6
 @export var custom_gravity: float = 15.5
-@export var ground_acceleration: float = 12.5
+@export var ground_acceleration: float = 5.5
 @export var air_acceleration: float = 80.0
 @export var air_speed_cap: float = 1.1
-@export var friction: float = 6.5
+@export var friction: float = 5.2
 @export var stop_speed: float = 2.0
 
 @export_category("Speed Limits")
@@ -60,6 +60,16 @@ var team: int = -1   # -1 = ще не отримали від сервера
 
 @onready var model_ct: Node3D = get_node_or_null("operative_ct1")
 @onready var model_t: Node3D = get_node_or_null("terrorist_t1")
+# Одні руки на обидві команди: всі анімації прив'язані до цього вузла.
+# За командою міняються лише меші та матеріали (скін), див. _apply_arms_skin().
+@onready var arms_node: Node3D = get_node_or_null("head/arms")
+
+const ARMS_SCENE_T := preload("res://playersModels/terrorist_t1_arms.glb")
+const ARMS_SCENE_CT := preload("res://playersModels/operative_ct1_arms.glb")
+const ARM_PARTS := ["arm_L", "hand_L", "arm_R", "hand_R"]
+
+var _mat_voxel: StandardMaterial3D
+var _mat_glow: StandardMaterial3D
 
 var gravity: float = custom_gravity
 var jump_streak: int = 0
@@ -73,6 +83,14 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	# Чужі копії гравця не повинні мати власного HUD: інакше в групах
+	# (score_label, health_label...) з'являються чужі лейбли, і Hud оновлює не ті.
+	if not is_multiplayer_authority():
+		var other_ui := get_node_or_null("CanvasLayer")
+		if other_ui:
+			remove_child(other_ui)
+			other_ui.queue_free()
+	Hitbox.build_for(self)   # хітбокси голови/тулуба/рук/ніг (на кожній копії гравця)
 	gravity = custom_gravity
 	_head_base_y = head.position.y
 	health = max_health
@@ -340,6 +358,7 @@ func _die() -> void:
 @rpc("authority", "call_local", "reliable")
 func _set_dead_state(value: bool) -> void:
 	is_dead = value
+	Hitbox.set_enabled(self, not value)   # труп не ловить кулі (на всіх клієнтах)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -354,6 +373,7 @@ func _revive() -> void:
 		death_anim.stop()
 		death_anim.seek(0.0, true)
 
+	Hitbox.set_enabled(self, true)
 	# Повертаємо оригінальні шари зіткнення
 	collision_layer = _original_collision_layer
 	collision_mask = _original_collision_mask
@@ -363,6 +383,7 @@ func _revive() -> void:
 	is_dead = false
 	last_attacker_id = -1
 
+	_apply_team_visual()
 	_update_health_hud()
 
 	# Нагадуємо суперникові, який у мене ніж (на випадок, якщо пакет загубився).
@@ -375,10 +396,44 @@ func _revive() -> void:
 # (вид від першої особи), а чужого бачить у моделі його команди.
 func _apply_team_visual() -> void:
 	var is_local := is_multiplayer_authority()
+	# Хітбокси підганяємо під модель команди (форма береться з вершин меша).
+	if team == Team.CT or team == Team.T:
+		Hitbox.fit_to_model(self, model_ct if team == Team.CT else model_t)
 	if model_ct:
 		model_ct.visible = (team == Team.CT) and not is_local
 	if model_t:
 		model_t.visible = (team == Team.T) and not is_local
+	if arms_node:
+		arms_node.visible = is_local and (team == Team.T or team == Team.CT)
+		if arms_node.visible:
+			_apply_arms_skin()
+
+
+# Підміняє меші/матеріали рук під команду. Вузол "arms" та його
+# arm_L/hand_L/arm_R/hand_R лишаються тими самими -> анімації спільні.
+func _apply_arms_skin() -> void:
+	if _mat_voxel == null:
+		_mat_voxel = StandardMaterial3D.new()
+		_mat_voxel.vertex_color_use_as_albedo = true
+		_mat_voxel.roughness = 0.85
+		_mat_glow = StandardMaterial3D.new()
+		_mat_glow.vertex_color_use_as_albedo = true
+		_mat_glow.roughness = 0.2
+		_mat_glow.emission_enabled = true
+		_mat_glow.emission = Color(0.25, 0.55, 0.85)
+		_mat_glow.emission_energy_multiplier = 1.4
+
+	var src: Node = (ARMS_SCENE_CT if team == Team.CT else ARMS_SCENE_T).instantiate()
+	for part in ARM_PARTS:
+		var from := src.find_child(part, true, false) as MeshInstance3D
+		var to := arms_node.find_child(part, true, false) as MeshInstance3D
+		if from == null or to == null:
+			continue
+		to.mesh = from.mesh
+		for i in to.mesh.get_surface_count():
+			# поверхня 1 є лише в CT-рук (світна смужка)
+			to.set_surface_override_material(i, _mat_glow if i == 1 else _mat_voxel)
+	src.free()
 
 
 @rpc("any_peer", "call_local", "reliable")
