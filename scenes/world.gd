@@ -26,6 +26,7 @@ var room_id: int = -1
 var room_peers: Array = []     # реальні peer_id цієї кімнати (бот не є мережевим peer)
 var bot_match: bool = false
 var _match_begun: bool = false
+var _rewarded: bool = false     # нагорода за матч видається лише раз
 
 var spawn_points: Array[Node3D] = []
 var players_node: Node
@@ -44,6 +45,8 @@ var _last_spawn_transform: Dictionary = {}  # player_id:int -> Transform3D
 
 # Ніки гравців (peer_id -> нік). Заповнює сервер, клієнти отримують разом з рахунком.
 var nicks: Dictionary = {}
+# Ніки, які клієнт отримав від сервера разом з рахунком (на клієнті `nicks` порожній).
+var _known_nicks: Dictionary = {}
 var _scoreboard: Control = null
 
 var _countdown_timer: Timer
@@ -501,8 +504,31 @@ func _end_game(winner_id: int) -> void:
 	_round_tick_timer.stop()
 	_freeze_timer.stop()
 	state = State.GAME_OVER
+	_reward_winner(winner_id)
 	_hud(State.GAME_OVER, winner_id)
 	_game_over_timer.start()
+
+
+# Нагорода коїнами. Рахується за рахунком: чим більше раундів програв переможець, тим менше.
+# Технічна перемога (суперник вийшов, рахунок < wins_to_end_game) нагороди не дає.
+func _reward_winner(winner_id: int) -> void:
+	if _rewarded:
+		return
+	_rewarded = true
+	if int(scores.get(winner_id, 0)) < wins_to_end_game:
+		return
+	if bot_match:
+		# Офлайн-матч: сервера тут немає. Результат лишаємо в пам'яті, меню відправить його
+		# на сервер після повернення (див. menu.gd / Economy.report_bot_win).
+		if winner_id == 1:
+			Engine.set_meta("pending_bot_win", int(scores.get(BOT_ID, 0)))
+		return
+	if multiplayer.is_server():
+		var loser_score := 0
+		for id in scores.keys():
+			if id != winner_id:
+				loser_score = max(loser_score, int(scores[id]))
+		Economy.award_pvp_win(winner_id, loser_score)
 
 
 func _on_game_over_timeout() -> void:
@@ -538,6 +564,7 @@ func _submit_nick(nick: String) -> void:
 
 @rpc("call_local", "reliable")
 func _sync_scoreboard(new_scores: Dictionary, new_nicks: Dictionary) -> void:
+	_known_nicks = new_nicks.duplicate()
 	if _scoreboard == null:
 		return
 	var my_id := multiplayer.get_unique_id()
@@ -548,6 +575,12 @@ func _sync_scoreboard(new_scores: Dictionary, new_nicks: Dictionary) -> void:
 	_scoreboard.call("update_board",
 		str(new_nicks.get(my_id, "Player")), int(new_scores.get(my_id, 0)),
 		str(new_nicks.get(enemy_id, "Player")), int(new_scores.get(enemy_id, 0)))
+
+
+# Нік гравця за id (для кіл-табу). Працює і на сервері, і на клієнті, і в грі з ботом.
+func get_nick(id: int) -> String:
+	var n: String = str(_known_nicks.get(id, nicks.get(id, "")))
+	return n if n != "" else "Player"
 
 
 func _make_scoreboard() -> void:
