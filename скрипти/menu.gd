@@ -13,6 +13,11 @@ const DEFAULT_NICK_PREFIX := "Player"
 var nick_input: LineEdit = null
 var bot_button: Button = null
 var balance_label: Label = null
+var knife_label: Label = null
+var _shop_layer: CanvasLayer = null
+var _shop_rows: VBoxContainer = null
+var _shop_balance: Label = null
+var _shop_msg: Label = null
 var _recent_gain: int = 0
 var _bg_attempts: int = 0
 var _bg_timer: Timer = null
@@ -42,13 +47,14 @@ func _ready() -> void:
 	_make_nick_input()
 	_make_bot_button()
 	SETTINGS_SCRIPT.load_settings()
-	_make_knife_buttons()
+	_make_knife_ui()
 	_make_settings_ui()
 	Network.connection_succeeded.connect(_on_connected)
 	Network.connection_failed.connect(_on_connection_failed)
 
 	_make_balance_label()
 	Economy.profile_updated.connect(_on_profile_updated)
+	Economy.shop_message.connect(func(text: String): _shop_msg.text = text)
 	_bg_timer = Timer.new()
 	_bg_timer.one_shot = true
 	_bg_timer.timeout.connect(_bg_connect)
@@ -83,6 +89,9 @@ func _on_profile_updated() -> void:
 		_recent_gain = Economy.view_last_reward
 		Economy.view_last_reward = 0
 	_refresh_balance()
+	_refresh_knife_label()
+	if _shop_layer != null and _shop_layer.visible:
+		_refresh_shop()
 
 
 func _online() -> bool:
@@ -147,29 +156,139 @@ func _store_nick(text: String) -> void:
 	Engine.set_meta("player_nick", n if n != "" else "Player")
 
 
-# Вибір ножа: 3 кнопки праворуч від меню.
-func _make_knife_buttons() -> void:
+# Вибраний ніж + кнопка "Магазин" (вікно, де купуються й вибираються ножі).
+func _make_knife_ui() -> void:
+	knife_label = Label.new()
+	knife_label.position = Vector2(1020, 285)
+	knife_label.add_theme_font_size_override("font_size", 28)
+	add_child(knife_label)
+
+	var shop_btn := Button.new()
+	shop_btn.text = "Магазин"
+	shop_btn.position = Vector2(1020, 340)
+	shop_btn.size = Vector2(250, 60)
+	shop_btn.add_theme_font_size_override("font_size", 28)
+	shop_btn.pressed.connect(func():
+		_shop_msg.text = ""
+		_refresh_shop()
+		_shop_layer.visible = true)
+	add_child(shop_btn)
+
+	_make_shop_overlay()
+	_refresh_knife_label()
+
+
+func _make_shop_overlay() -> void:
+	_shop_layer = CanvasLayer.new()
+	_shop_layer.layer = 10
+	_shop_layer.visible = false
+	add_child(_shop_layer)
+
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.65)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_shop_layer.add_child(dim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(620, 0)
+	center.add_child(panel)
+
+	var margin := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 24)
+	panel.add_child(margin)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	margin.add_child(vbox)
+
 	var title := Label.new()
-	title.text = "Ніж:"
-	title.position = Vector2(1020, 285)
+	title.text = "Магазин ножів"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
-	add_child(title)
+	vbox.add_child(title)
 
-	var group := ButtonGroup.new()
-	var defs: Array = [["karambit", "Керамбіт", 330], ["bolisong", "Метелик", 400], ["butterfly", "Butterfly", 470]]
-	for d in defs:
-		var skin: String = d[0]
-		var b := Button.new()
-		b.text = d[1]
-		b.toggle_mode = true
-		b.button_group = group
-		b.position = Vector2(1020, d[2])
-		b.size = Vector2(250, 60)
-		b.add_theme_font_size_override("font_size", 28)
-		b.button_pressed = (Loadout.knife == skin)
-		b.pressed.connect(func(): Loadout.set_knife(skin))
-		add_child(b)
+	_shop_balance = Label.new()
+	_shop_balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shop_balance.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(_shop_balance)
 
+	_shop_rows = VBoxContainer.new()
+	_shop_rows.add_theme_constant_override("separation", 10)
+	vbox.add_child(_shop_rows)
+
+	_shop_msg = Label.new()
+	_shop_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_shop_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_shop_msg.custom_minimum_size = Vector2(0, 28)
+	vbox.add_child(_shop_msg)
+
+	var close_btn := Button.new()
+	close_btn.text = "Закрити"
+	close_btn.custom_minimum_size = Vector2(160, 44)
+	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_btn.pressed.connect(func(): _shop_layer.visible = false)
+	vbox.add_child(close_btn)
+
+
+# Перемальовуємо рядки магазину за даними від сервера. Купити/вибрати можна лише при зв'язку з сервером.
+func _refresh_shop() -> void:
+	if _shop_rows == null:
+		return
+	for c in _shop_rows.get_children():
+		c.queue_free()
+	var online := _online() and Economy.view_coins >= 0
+	if Economy.view_coins >= 0:
+		_shop_balance.text = "Баланс: %d" % Economy.view_coins
+	else:
+		_shop_balance.text = "Баланс: ... (чекаємо відповідь сервера)"
+
+	for id in Economy.KNIFE_ORDER:
+		var info: Dictionary = Economy.KNIVES[id]
+		var owned: bool = Economy.view_owned.has(id)
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		_shop_rows.add_child(row)
+
+		var name_l := Label.new()
+		name_l.text = str(info["name"])
+		name_l.custom_minimum_size = Vector2(220, 0)
+		name_l.add_theme_font_size_override("font_size", 24)
+		row.add_child(name_l)
+
+		var price_l := Label.new()
+		price_l.text = "Є у тебе" if owned else "%d коїнів" % int(info["price"])
+		price_l.custom_minimum_size = Vector2(150, 0)
+		price_l.add_theme_font_size_override("font_size", 20)
+		row.add_child(price_l)
+
+		var btn := Button.new()
+		btn.custom_minimum_size = Vector2(160, 44)
+		if Economy.view_equipped == id:
+			btn.text = "Вибрано"
+			btn.disabled = true
+		elif owned:
+			btn.text = "Вибрати"
+			btn.disabled = not online
+			btn.pressed.connect(func(): Economy.request_equip_knife.rpc_id(1, id))
+		else:
+			btn.text = "Купити"
+			btn.disabled = not online
+			btn.pressed.connect(func(): Economy.request_buy_knife.rpc_id(1, id))
+		row.add_child(btn)
+
+
+func _refresh_knife_label() -> void:
+	if knife_label == null:
+		return
+	var id: String = Economy.view_equipped if Economy.view_equipped != "" else Loadout.knife
+	var info: Dictionary = Economy.KNIVES.get(id, {"name": "?"})
+	knife_label.text = "Ніж: %s" % info["name"]
 
 # Кнопка "Налаштування" під вибором ножа відкриває вікно з вкладками "Миша" і "Приціл".
 func _make_settings_ui() -> void:

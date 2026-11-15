@@ -1,7 +1,8 @@
 extends Node
 # autoload/economy.gd — Project Settings -> Autoload, ім'я "Economy".
-# Баланс зберігається і рахується ТІЛЬКИ на сервері. Клієнт лише показує число від сервера.
-# Сховище: Firebase Realtime Database (якщо задані змінні середовища FIREBASE_URL і FIREBASE_SECRET),
+# Баланс, куплені ножі й вибраний ніж зберігаються і перевіряються ТІЛЬКИ на сервері.
+# Клієнт лише показує те, що прислав сервер, і просить дії (купити / вибрати).
+# Сховище: Firebase Realtime Database (змінні середовища FIREBASE_URL і FIREBASE_SECRET),
 # інакше — локальний файл (для тестів на своєму ПК).
 
 # ---------- Налаштування нагород ----------
@@ -12,6 +13,16 @@ const WINS_TO_END := 10           # має збігатися з world.wins_to_e
 const BOT_MIN_INTERVAL_SEC := 90  # не частіше ніж раз на 90 с
 const BOT_DAILY_CAP := 600        # максимум коїнів за добу з ботів
 
+# ---------- Магазин ножів ----------
+# id ножа має збігатися з Loadout.KNIVES і weapon_switch.gd. Ціна 0 = безкоштовний (є в усіх).
+const KNIVES := {
+	"bolisong":  {"name": "Метелик",   "price": 0},
+	"karambit":  {"name": "Керамбіт",  "price": 300},
+	"butterfly": {"name": "Butterfly", "price": 500},
+}
+const KNIFE_ORDER := ["bolisong", "karambit", "butterfly"]
+const DEFAULT_KNIFE := "bolisong"
+
 const DB_PATH := "user://economy_db.json"      # сервер, лише якщо Firebase не налаштований
 const TOKEN_PATH := "user://account.cfg"       # клієнт: лише "логін" (токен), не гроші
 const FETCH_RETRIES := 3
@@ -19,7 +30,10 @@ const FETCH_RETRIES := 3
 # ---------- Клієнт: те, що показуємо в меню ----------
 var view_coins: int = -1          # -1 = ще не отримали від сервера
 var view_last_reward: int = 0     # скільки щойно нараховано (меню покаже "+N")
+var view_owned: Array = []        # куплені ножі
+var view_equipped: String = ""    # вибраний ніж
 signal profile_updated
+signal shop_message(text: String)
 
 # ---------- Сервер ----------
 var _peer_acc: Dictionary = {}    # peer_id -> ключ акаунта (лише ПІСЛЯ завантаження профілю)
@@ -57,7 +71,22 @@ static func calc_reward(max_reward: int, rounds_lost: int) -> int:
 
 
 static func _default_profile() -> Dictionary:
-	return {"coins": 0, "last_bot_unix": 0, "bot_day": "", "bot_today": 0}
+	return {
+		"coins": 0,
+		"owned": {DEFAULT_KNIFE: true},
+		"equipped": DEFAULT_KNIFE,
+		"last_bot_unix": 0, "bot_day": "", "bot_today": 0,
+	}
+
+
+# Гарантуємо, що в профілі є безкоштовний ніж і вибраний ніж справді куплений.
+static func _normalize(p: Dictionary) -> void:
+	if not (p.get("owned") is Dictionary):
+		p["owned"] = {}
+	p["owned"][DEFAULT_KNIFE] = true
+	var eq := str(p.get("equipped", DEFAULT_KNIFE))
+	if not KNIVES.has(eq) or not p["owned"].has(eq):
+		p["equipped"] = DEFAULT_KNIFE
 
 
 # ====================== КЛІЄНТ ======================
@@ -78,13 +107,24 @@ func _get_token() -> String:
 
 
 @rpc("authority", "reliable")
-func sync_profile(coins: int, reward: int) -> void:
+func sync_profile(coins: int, reward: int, owned: Array, equipped: String) -> void:
 	if multiplayer.is_server():
 		return
 	view_coins = coins
+	view_owned = owned
+	view_equipped = equipped
 	if reward > 0:
 		view_last_reward = reward
+	if KNIVES.has(equipped):
+		Loadout.set_knife(equipped)   # саме цей ніж гра візьме в матчі
 	profile_updated.emit()
+
+
+@rpc("authority", "reliable")
+func shop_reply(text: String) -> void:
+	if multiplayer.is_server():
+		return
+	shop_message.emit(text)
 
 
 # ====================== СЕРВЕР: вхід ======================
@@ -110,6 +150,7 @@ func hello(token: String) -> void:
 
 
 func _bind(peer: int, key: String) -> void:
+	_normalize(_db[key])
 	_peer_acc[peer] = key
 	_push(peer, 0)
 
@@ -164,6 +205,49 @@ func _give(peer: int, amount: int) -> void:
 	_push(peer, amount)
 
 
+# ====================== СЕРВЕР: магазин ======================
+# Ціну, наявність грошей і чи вже куплено — усе перевіряє сервер. Клієнт тільки каже, який ніж хоче.
+@rpc("any_peer", "reliable")
+func request_buy_knife(knife_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var p := _profile_of(peer)
+	if p.is_empty() or not KNIVES.has(knife_id):
+		return
+	if p["owned"].has(knife_id):
+		_reply(peer, "Цей ніж у тебе вже є.")
+		return
+	var price: int = KNIVES[knife_id]["price"]
+	if int(p["coins"]) < price:
+		_reply(peer, "Не вистачає коїнів: потрібно %d." % price)
+		return
+	p["coins"] = int(p["coins"]) - price      # спочатку списуємо
+	p["owned"][knife_id] = true
+	p["equipped"] = knife_id                  # куплений ніж одразу вибираємо
+	_save_profile(_peer_acc[peer])
+	_push(peer, 0)
+	_reply(peer, "Куплено: %s!" % KNIVES[knife_id]["name"])
+
+
+@rpc("any_peer", "reliable")
+func request_equip_knife(knife_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var p := _profile_of(peer)
+	if p.is_empty() or not KNIVES.has(knife_id) or not p["owned"].has(knife_id):
+		return   # вибрати можна тільки куплене
+	p["equipped"] = knife_id
+	_save_profile(_peer_acc[peer])
+	_push(peer, 0)
+
+
+func _reply(peer: int, text: String) -> void:
+	if peer != 1 and multiplayer.get_peers().has(peer):
+		shop_reply.rpc_id(peer, text)
+
+
 func _profile_of(peer: int) -> Dictionary:
 	return _db.get(_peer_acc.get(peer, ""), {})
 
@@ -172,7 +256,7 @@ func _push(peer: int, reward: int) -> void:
 	var p := _profile_of(peer)
 	if p.is_empty() or peer == 1 or not multiplayer.get_peers().has(peer):
 		return
-	sync_profile.rpc_id(peer, int(p["coins"]), reward)
+	sync_profile.rpc_id(peer, int(p["coins"]), reward, p["owned"].keys(), str(p["equipped"]))
 
 
 # ====================== СХОВИЩЕ ======================
@@ -206,10 +290,9 @@ func _fetch_profile(peer: int, key: String, retries_left: int) -> void:
 			var data = JSON.parse_string(text)
 			if data is Dictionary:
 				profile.merge(data, true)
-			elif not _db.has(key):
-				_db[key] = profile
-				_save_profile(key)   # новий акаунт
 			_db[key] = profile
+			if not (data is Dictionary):
+				_save_profile(key)   # новий акаунт
 			_bind(peer, key))
 
 
