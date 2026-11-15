@@ -117,8 +117,8 @@ var _sounds_loaded_ak: bool = false
 var _sounds_loaded_awp: bool = false
 
 # ------------------------------------------------------------------
-# СНАЙПЕРКА (AWP). Модель: res://awp/awp_style.glb (статичний меш без анімацій) —
-# діставання / віддача / затвор / перезарядка зроблені tween-ами в коді.
+# СНАЙПЕРКА (AWP). Анімації (draw / reload / view) беруться з AnimationPlayer,
+# який лежить у сцені: head/Camera3D/awp/AnimationPlayer. У коді анімацій немає.
 # Клавіша 3 — дістати, ПКМ — приціл (кілька разів = наступний рівень зуму), R — перезарядка.
 # ------------------------------------------------------------------
 @export_category("Sniper (AWP)")
@@ -129,16 +129,24 @@ var _sounds_loaded_awp: bool = false
 @export var sniper_muzzle_local: Vector3 = Vector3(0.64, 0.163, 0.0)   # дуло в координатах моделі
 @export var sniper_damage: float = 115.0
 @export var sniper_bullet_speed: float = 300.0   # швидкість кулі (у АК — 60 з bullet.tscn)
-@export var sniper_fire_interval: float = 1.45    # цикл затвора між пострілами
+@export var sniper_fire_interval: float = 1.45    # мінімум між пострілами (якщо є анімація пострілу довша — чекаємо її)
 @export var sniper_mag_size: int = 5
 @export var sniper_reserve_total: int = 15
-@export var sniper_reload_time: float = 3.3
-@export var sniper_draw_time: float = 0.75
+# Нескінченний запас: перезаряджатись можна безкінечно (обойма витрачається, запас — ні). Вимкніть для звичайних патронів.
+@export var infinite_reserve_ammo: bool = true
+@export var sniper_reload_time: float = 3.3   # запасне значення: діє, лише якщо в плеєрі немає анімації reload
 @export var sniper_unscoped_spread_deg: float = 5.0   # без прицілу летить «куди-небудь»
 @export var sniper_recoil_up_deg: float = 2.2
 @export var sniper_zoom_fovs: Array[float] = [30.0, 10.0]   # FOV першого та другого рівня зуму
 
 const SNIPER_MODEL_PATHS: Array[String] = ["res://awp/awp.glb", "res://awp/awp_style.glb"]
+
+# Назви анімацій у AnimationPlayer снайперки (сцена character.tscn).
+const SNIPER_ANIM_DRAW := "draw"
+const SNIPER_ANIM_RELOAD := "reload"
+const SNIPER_ANIM_VIEW := "view"
+var _sniper_inspect_id: int = 0
+var _force_redraw: bool = false
 
 var sniper_holder: Node3D = null
 var sniper_muzzle: Node3D = null
@@ -156,9 +164,9 @@ var sniper_reserve: int = 0
 var sniper_scope_level: int = 0   # 0 = без прицілу
 var _sniper_next_shot_ms: int = 0   # час (мс), раніше за який затвор ще не готовий
 var _sniper_reload_id: int = 0
-var _sniper_tween: Tween = null
-var _sniper_base_pos: Vector3 = Vector3.ZERO
-var _sniper_base_rot: Vector3 = Vector3.ZERO
+# AnimationPlayer снайперки зі сцени та початкові пози вузлів, які він чіпає (AWP + руки).
+var sniper_anim: AnimationPlayer = null
+var _sniper_pose_base: Array = []
 var _base_fov: float = 75.0
 var _base_mouse_sens: float = -1.0
 var _scope_layer: CanvasLayer = null
@@ -297,8 +305,20 @@ func _is_frozen() -> bool:
 	return player_body != null and "frozen" in player_body and player_body.frozen
 
 
+func _is_paused() -> bool:
+	return player_body != null and "paused" in player_body and player_body.paused
+
+
+func _is_player_dead() -> bool:
+	return player_body != null and "is_dead" in player_body and player_body.is_dead
+
+
 func _process(delta: float) -> void:
 	_time_since_last_shot += delta
+
+	# Старт раунду (3-2-1) або смерть — приціл AWP знімається й нового не вмикається.
+	if sniper_scope_level > 0 and (_is_frozen() or _is_player_dead()):
+		_set_scope(0)
 
 	# Після паузи у стрільбі рівномірно повертаємо цільову віддачу до 0
 	if _time_since_last_shot >= recoil_recovery_delay:
@@ -323,7 +343,7 @@ func _process(delta: float) -> void:
 	if _weapon_menu_open and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_close_weapon_menu(false)
 
-	if full_auto and current_weapon == Weapon.AK47 and not _weapon_menu_open and not _is_frozen() and Input.is_action_pressed("shoot"):
+	if full_auto and current_weapon == Weapon.AK47 and not _weapon_menu_open and not _is_frozen() and not _is_player_dead() and not _is_paused() and Input.is_action_pressed("shoot"):
 		if can_shoot and not is_reloading and not is_drawing:
 			shoot()
 
@@ -343,6 +363,9 @@ func _update_crosshair(_delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Меню паузи відкрите — ігрові дії вимкнені.
+	if _is_paused():
+		return
 	# E — меню вибору основної зброї (АК-47 / AWP). Поки воно відкрите, ігрові дії вимкнені.
 	if event.is_action_pressed("weapon_menu"):
 		if _weapon_menu_open:
@@ -359,6 +382,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("slot_knife") and not is_attacking:
 		switch_weapon(Weapon.KNIFE)
 
+	# На старті раунду та після смерті стріляти / бити ножем / перезаряджатись не можна.
+	if _is_player_dead() and (event.is_action_pressed("shoot") or event.is_action_pressed("reload")):
+		return
 	if event.is_action_pressed("shoot") and _is_frozen():
 		return
 
@@ -370,7 +396,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif current_weapon == Weapon.SNIPER:
 			sniper_shoot()
 
-	if event.is_action_pressed("scope") and current_weapon == Weapon.SNIPER and not is_drawing and not is_reloading:
+	if event.is_action_pressed("scope") and current_weapon == Weapon.SNIPER and not is_drawing and not is_reloading and not _is_frozen() and not _is_player_dead():
+		_sniper_cancel_inspect()
 		_cycle_scope()
 
 	if event.is_action_pressed("reload"):
@@ -384,6 +411,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			inspect_weapon()
 		elif current_weapon == Weapon.KNIFE and not is_drawing and not is_attacking and not is_inspecting:
 			inspect_weapon()
+		elif current_weapon == Weapon.SNIPER and not is_drawing and not is_reloading and not is_inspecting and sniper_scope_level == 0:
+			inspect_weapon()
 
 
 func switch_weapon(weapon: Weapon) -> void:
@@ -394,8 +423,10 @@ func switch_weapon(weapon: Weapon) -> void:
 
 @rpc("call_local", "any_peer", "reliable")
 func _switch_weapon_rpc(weapon: Weapon) -> void:
-	if current_weapon == weapon:
+	# _force_redraw: той самий виклик, але без «зброя вже в руках» — щоб заново зіграти draw.
+	if current_weapon == weapon and not _force_redraw:
 		return
+	_force_redraw = false
 
 	_switch_id += 1
 	var my_switch: int = _switch_id
@@ -506,10 +537,10 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 			_restore_pose_base(_bolisong_pose_base)
 		_butterfly_cancel()
 		_restore_pose_base(_butterfly_pose_base)
-		_sniper_play_draw()
+		var draw_length: float = _sniper_play(SNIPER_ANIM_DRAW)
 		if _has_authority():
 			is_drawing = true
-		await get_tree().create_timer(sniper_draw_time).timeout
+		await get_tree().create_timer(draw_length).timeout
 		if my_switch != _switch_id:
 			return
 		if _has_authority():
@@ -518,6 +549,8 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 
 
 func knife_attack() -> void:
+	if _is_player_dead():
+		return
 	Matchmaker.rpc_room(self, "_knife_attack_rpc", [], false)
 
 
@@ -571,6 +604,7 @@ func inspect_weapon() -> void:
 @rpc("call_local", "any_peer", "reliable")
 func _inspect_weapon_rpc() -> void:
 	if current_weapon == Weapon.SNIPER:
+		_sniper_inspect()
 		return
 	if current_weapon == Weapon.KNIFE and _use_bolisong():
 		_bolisong_inspect()
@@ -609,13 +643,15 @@ func _inspect_weapon_rpc() -> void:
 
 
 func shoot() -> void:
+	if _is_player_dead():
+		return
 	# Миттєво перериваємо осмотр зброї, якщо стріляємо під час нього
 	if ak47_inspect_anim and ak47_inspect_anim.is_playing():
 		ak47_inspect_anim.stop()
 		is_inspecting = false
 
 	if ammo_in_mag <= 0:
-		if reserve_ammo > 0:
+		if reserve_ammo > 0 or infinite_reserve_ammo:
 			reload()
 		return
 
@@ -980,8 +1016,12 @@ func _watch_for_kill(target: Node, headshot: bool, weapon: int) -> void:
 		if "is_dead" in target and target.is_dead:
 			_kill_watch_token += 1   # одне вбивство — один ефект
 			_spawn_kill_marker()
+			# Картка серії вбивств підряд (HUD локального гравця).
+			var chud := get_tree().get_first_node_in_group("combat_hud")
+			if chud and chud.has_method("add_kill"):
+				chud.call("add_kill", headshot)
 			# Кіл-таб справа зверху бачать обидва гравці.
-			Matchmaker.rpc_room(self, "_killfeed_rpc", [multiplayer.get_unique_id(), _weapon_display_name(weapon), headshot], false)
+			Matchmaker.rpc_room(self, "_killfeed_rpc", [multiplayer.get_unique_id(), target.name.to_int(), _weapon_display_name(weapon), headshot], false)
 			return
 
 
@@ -995,9 +1035,19 @@ static var _killfeed_box: VBoxContainer = null
 
 
 @rpc("call_local", "any_peer", "reliable")
-func _killfeed_rpc(killer_id: int, weapon_name: String, headshot: bool) -> void:
-	var killer_is_me: bool = (killer_id == multiplayer.get_unique_id())
-	_add_killfeed_entry("Ви" if killer_is_me else "Суперник", weapon_name, headshot, "Суперник" if killer_is_me else "Ви")
+func _killfeed_rpc(killer_id: int, victim_id: int, weapon_name: String, headshot: bool) -> void:
+	var my_id: int = multiplayer.get_unique_id()
+	_add_killfeed_entry(_nick_of(killer_id), weapon_name, headshot, _nick_of(victim_id),
+		killer_id == my_id, victim_id == my_id)
+
+
+# Нік гравця з world.gd (id -> нік); якщо світ ще не готовий — "Player".
+func _nick_of(id: int) -> String:
+	var room := Matchmaker.room_of(self)
+	var world := room.get_node_or_null("MAP/world") if room else null
+	if world and world.has_method("get_nick"):
+		return str(world.call("get_nick", id))
+	return "Player"
 
 
 func _get_killfeed_box() -> VBoxContainer:
@@ -1027,7 +1077,7 @@ func _get_killfeed_box() -> VBoxContainer:
 	return box
 
 
-func _add_killfeed_entry(killer: String, weapon_name: String, headshot: bool, victim: String) -> void:
+func _add_killfeed_entry(killer: String, weapon_name: String, headshot: bool, victim: String, killer_is_me: bool = false, victim_is_me: bool = false) -> void:
 	var box := _get_killfeed_box()
 	# Лишаємо не більше KILLFEED_MAX записів: найстаріший зникає.
 	while box.get_child_count() >= KILLFEED_MAX:
@@ -1052,11 +1102,12 @@ func _add_killfeed_entry(killer: String, weapon_name: String, headshot: bool, vi
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	panel.add_child(row)
-	row.add_child(_kill_label(killer, 20, Color(1.0, 0.85, 0.3) if killer == "Ви" else Color.WHITE))
-	row.add_child(_kill_label(weapon_name, 16, Color(0.7, 0.72, 0.78)))
+	row.add_child(_kill_label(killer, 20, Color(1.0, 0.85, 0.3) if killer_is_me else Color.WHITE))
+	# Замість слів — іконки: постріл (куля) або ніж, і голова при хедшоті.
+	row.add_child(_make_kill_icon(KillIcon.Kind.KNIFE if weapon_name == "Ніж" else KillIcon.Kind.BULLET))
 	if headshot:
-		row.add_child(_kill_label("HS", 16, Color(1.0, 0.85, 0.2)))
-	row.add_child(_kill_label(victim, 20, Color(1.0, 0.85, 0.3) if victim == "Ви" else Color(1.0, 0.45, 0.45)))
+		row.add_child(_make_kill_icon(KillIcon.Kind.HEAD))
+	row.add_child(_kill_label(victim, 20, Color(1.0, 0.85, 0.3) if victim_is_me else Color(1.0, 0.45, 0.45)))
 
 	box.add_child(panel)
 	panel.modulate.a = 0.0
@@ -1140,6 +1191,71 @@ func _spawn_kill_marker() -> void:
 
 
 
+# Власні PNG (необов'язково): якщо покласти файли в res://textures/kill_hud/ —
+# вони замінять намальовані іконки: icon_shot.png, icon_knife.png, icon_headshot.png.
+const KILL_ICON_DIR := "res://textures/kill_hud/"
+const KILL_ICON_FILES: Array[String] = ["icon_shot.png", "icon_knife.png", "icon_headshot.png"]
+const KILL_ICON_HEIGHT: float = 24.0
+
+
+func _make_kill_icon(kind: int) -> Control:
+	var path: String = KILL_ICON_DIR + KILL_ICON_FILES[kind]
+	if ResourceLoader.exists(path):
+		var tex := load(path) as Texture2D
+		if tex:
+			var tr := TextureRect.new()
+			tr.texture = tex
+			tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tr.custom_minimum_size = Vector2(KILL_ICON_HEIGHT * tex.get_width() / maxf(tex.get_height(), 1.0), KILL_ICON_HEIGHT)
+			tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			return tr
+	var icon := KillIcon.new(kind)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	return icon
+
+
+# Іконки кіл-табу, намальовані кодом (без зовнішніх файлів).
+class KillIcon extends Control:
+	enum Kind { BULLET, KNIFE, HEAD }
+	var kind: int = Kind.BULLET
+
+	func _init(k: int = Kind.BULLET) -> void:
+		kind = k
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		custom_minimum_size = Vector2(28, 28) if k == Kind.HEAD else Vector2(32, 18)
+
+	func _shape(points: PackedVector2Array, fill: Color) -> void:
+		draw_colored_polygon(points, fill)
+		var outline := points.duplicate()
+		outline.append(points[0])
+		draw_polyline(outline, Color(0, 0, 0, 0.9), 1.5)
+
+	func _draw() -> void:
+		match kind:
+			Kind.BULLET:
+				# Куля, летить праворуч: гільза + загострений носик.
+				_shape(PackedVector2Array([Vector2(2, 4), Vector2(18, 4), Vector2(18, 14), Vector2(2, 14)]), Color(0.86, 0.66, 0.26))
+				_shape(PackedVector2Array([Vector2(18, 4), Vector2(24, 5), Vector2(30, 9), Vector2(24, 13), Vector2(18, 14)]), Color(0.92, 0.93, 0.97))
+				draw_line(Vector2(4.5, 4.5), Vector2(4.5, 13.5), Color(0.45, 0.32, 0.1), 2.0)
+			Kind.KNIFE:
+				# Ніж лезом праворуч: руків'я, гарда, лезо.
+				_shape(PackedVector2Array([Vector2(1, 6), Vector2(9, 6), Vector2(9, 12), Vector2(1, 12)]), Color(0.38, 0.26, 0.16))
+				_shape(PackedVector2Array([Vector2(9, 4), Vector2(11, 4), Vector2(11, 14), Vector2(9, 14)]), Color(0.86, 0.66, 0.26))
+				_shape(PackedVector2Array([Vector2(11, 5), Vector2(25, 5), Vector2(31, 11), Vector2(11, 12)]), Color(0.88, 0.9, 0.95))
+			Kind.HEAD:
+				# Голова з плечима та червоним прицілом (хедшот).
+				_shape(PackedVector2Array([Vector2(3, 27), Vector2(4, 21), Vector2(9, 17), Vector2(19, 17), Vector2(24, 21), Vector2(25, 27)]), Color(0.78, 0.8, 0.86))
+				draw_circle(Vector2(14, 11), 7.0, Color(0.92, 0.93, 0.97))
+				draw_arc(Vector2(14, 11), 7.0, 0.0, TAU, 24, Color(0, 0, 0, 0.9), 1.5)
+				var red := Color(1.0, 0.2, 0.2)
+				draw_arc(Vector2(14, 11), 10.0, 0.0, TAU, 32, red, 2.0)
+				draw_line(Vector2(14, -1), Vector2(14, 4), red, 2.0)
+				draw_line(Vector2(0, 11), Vector2(5, 11), red, 2.0)
+				draw_line(Vector2(23, 11), Vector2(28, 11), red, 2.0)
+
+
 func _kill_label(text: String, size: int, color: Color) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -1178,7 +1294,7 @@ func _apply_recoil() -> void:
 
 
 func reload() -> void:
-	if reserve_ammo <= 0 or ammo_in_mag == mag_size:
+	if (reserve_ammo <= 0 and not infinite_reserve_ammo) or ammo_in_mag == mag_size:
 		return
 
 	# Переривати осмотр і при перезарядці, щоб анімації не накладались
@@ -1202,9 +1318,10 @@ func reload() -> void:
 	await get_tree().create_timer(reload_time).timeout
 
 	var needed: int = mag_size - ammo_in_mag
-	var take: int = min(needed, reserve_ammo)
+	var take: int = needed if infinite_reserve_ammo else min(needed, reserve_ammo)
 	ammo_in_mag += take
-	reserve_ammo -= take
+	if not infinite_reserve_ammo:
+		reserve_ammo -= take
 
 	# Перезарядка дає "чистий" магазин — без розкиду, накопиченого
 	# з попередньої черги/магазину.
@@ -1232,12 +1349,25 @@ func _reset_ammo_rpc() -> void:
 	sniper_reserve = sniper_reserve_total
 	_sniper_reload_id += 1
 	_sniper_next_shot_ms = 0
+	_sniper_reset_pose()
+	if _has_authority() and current_weapon == Weapon.SNIPER:
+		is_inspecting = false
 	_set_scope(0)
 	if _weapon_menu_open:
 		_close_weapon_menu()
 
 	if _has_authority():
 		_update_ammo_hud()
+
+	# Новий раунд / респавн: зброя «видається» заново — одразу граємо анімацію draw.
+	_replay_draw()
+
+
+# Повторно програє доставання зброї, що вже в руках (на старті кожного раунду).
+func _replay_draw() -> void:
+	_force_redraw = true
+	_switch_weapon_rpc(current_weapon)
+	_force_redraw = false
 
 
 func _update_ammo_hud() -> void:
@@ -1726,8 +1856,10 @@ func _setup_sniper() -> void:
 		sniper_muzzle = m
 
 	_sniper_disable_shadows(sniper_holder)
-	_sniper_base_pos = sniper_holder.position
-	_sniper_base_rot = sniper_holder.rotation
+	sniper_anim = _find_sniper_anim_player(sniper_holder)
+	if sniper_anim == null:
+		push_warning("AnimationPlayer снайперки не знайдено (очікую head/Camera3D/awp/AnimationPlayer) — AWP буде без анімацій.")
+	_sniper_pose_base = _capture_pose_base(sniper_anim)
 	sniper_holder.visible = false
 
 
@@ -1739,13 +1871,16 @@ func _sniper_disable_shadows(node: Node) -> void:
 
 
 func sniper_shoot() -> void:
+	if _is_player_dead():
+		return
 	if sniper_holder == null or Time.get_ticks_msec() < _sniper_next_shot_ms or is_reloading or is_drawing:
 		return
 	if sniper_ammo_in_mag <= 0:
-		if sniper_reserve > 0:
+		if sniper_reserve > 0 or infinite_reserve_ammo:
 			sniper_reload()
 		return
 
+	_sniper_cancel_inspect()
 	_sniper_next_shot_ms = Time.get_ticks_msec() + int(sniper_fire_interval * 1000.0)
 	sniper_ammo_in_mag -= 1
 	_update_ammo_hud()
@@ -1762,35 +1897,46 @@ func sniper_shoot() -> void:
 	_time_since_last_shot = 0.0
 	recoil_target += Vector2(deg_to_rad(sniper_recoil_up_deg), deg_to_rad(randf_range(-0.3, 0.3)))
 
-	# Після пострілу — перезатвор: приціл знімається (як в CS), ствол «грає».
+	# Після пострілу приціл знімається (як в CS). Анімація пострілу — лише якщо ви додали її
+	# в AnimationPlayer (назва містить shoot / fire / bolt); якщо ні — нічого не граємо.
 	_set_scope(0)
-	_sniper_play_bolt()
+	var shot_length: float = _sniper_play(_find_anim(sniper_anim, ["shoot", "fire", "bolt"]))
 
-	await get_tree().create_timer(sniper_fire_interval).timeout
+	# Цикл між пострілами = довша з двох величин: sniper_fire_interval або анімація пострілу.
+	var cycle: float = maxf(sniper_fire_interval, shot_length)
+	_sniper_next_shot_ms = Time.get_ticks_msec() + int(cycle * 1000.0)
+
+	await get_tree().create_timer(cycle).timeout
 	if my_switch != _switch_id:
 		return
-	if sniper_ammo_in_mag <= 0 and sniper_reserve > 0 and current_weapon == Weapon.SNIPER and not is_reloading:
+	if sniper_ammo_in_mag <= 0 and (sniper_reserve > 0 or infinite_reserve_ammo) and current_weapon == Weapon.SNIPER and not is_reloading:
 		sniper_reload()
 
 
 func sniper_reload() -> void:
 	if sniper_holder == null or is_reloading or is_drawing:
 		return
-	if sniper_reserve <= 0 or sniper_ammo_in_mag >= sniper_mag_size:
+	if (sniper_reserve <= 0 and not infinite_reserve_ammo) or sniper_ammo_in_mag >= sniper_mag_size:
 		return
 	_set_scope(0)
+	_sniper_cancel_inspect()
 	is_reloading = true
 	_sniper_reload_id += 1
 	var my_reload: int = _sniper_reload_id
-	_sniper_play_reload()
+	# Перезарядка триває рівно стільки, скільки йде анімація reload (з урахуванням speed_scale).
+	var reload_length: float = _sniper_play(SNIPER_ANIM_RELOAD)
+	if reload_length <= 0.0:
+		reload_length = sniper_reload_time   # анімації немає — запасний час
 
-	await get_tree().create_timer(sniper_reload_time).timeout
+	await get_tree().create_timer(reload_length).timeout
 	if my_reload != _sniper_reload_id:
 		return   # перемкнули зброю / респаун — перезарядку скасовано
 
-	var take: int = mini(sniper_mag_size - sniper_ammo_in_mag, sniper_reserve)
+	var needed_s: int = sniper_mag_size - sniper_ammo_in_mag
+	var take: int = needed_s if infinite_reserve_ammo else mini(needed_s, sniper_reserve)
 	sniper_ammo_in_mag += take
-	sniper_reserve -= take
+	if not infinite_reserve_ammo:
+		sniper_reserve -= take
 	is_reloading = false
 	_update_ammo_hud()
 
@@ -1861,62 +2007,63 @@ func _draw_scope(overlay: Control) -> void:
 	overlay.draw_circle(center, 2.0, Color(1, 0.1, 0.1, 0.9))
 
 
-# ---- процедурні анімації -------------------------------------------
-func _sniper_tween_kill() -> void:
-	if _sniper_tween and _sniper_tween.is_valid():
-		_sniper_tween.kill()
-	_sniper_tween = null
+# ---- анімації з AnimationPlayer у сцені ------------------------------
+# Шукає AnimationPlayer всередині AWP (у вас: head/Camera3D/awp/AnimationPlayer).
+func _find_sniper_anim_player(root: Node) -> AnimationPlayer:
+	if root == null:
+		return null
+	var fallback: AnimationPlayer = null
+	for n in root.find_children("*", "AnimationPlayer", true, false):
+		var ap := n as AnimationPlayer
+		if ap.has_animation(SNIPER_ANIM_DRAW) or ap.has_animation(SNIPER_ANIM_RELOAD):
+			return ap
+		if fallback == null:
+			fallback = ap
+	return fallback
 
 
+# Запускає анімацію з початкової пози. Повертає тривалість (с) або 0, якщо такої анімації немає.
+func _sniper_play(anim_name: String) -> float:
+	if sniper_anim == null or anim_name == "" or not sniper_anim.has_animation(anim_name):
+		return 0.0
+	_sniper_reset_pose()
+	sniper_anim.play(anim_name)
+	sniper_anim.seek(0.0, true)
+	return sniper_anim.current_animation_length / maxf(absf(sniper_anim.speed_scale), 0.01)
+
+
+# Зупиняє анімацію й повертає AWP та руки у початкове положення.
 func _sniper_reset_pose() -> void:
-	_sniper_tween_kill()
-	if sniper_holder:
-		sniper_holder.position = _sniper_base_pos
-		sniper_holder.rotation = _sniper_base_rot
+	_sniper_inspect_id += 1   # будь-яке скидання робить застарілим таймер осмотру
+	if sniper_anim:
+		sniper_anim.stop()
+	_restore_pose_base(_sniper_pose_base)
 
 
-func _sniper_play_draw() -> void:
-	if sniper_holder == null:
+# Осмотр (клавіша F): анімація "view".
+func _sniper_inspect() -> void:
+	if sniper_anim == null or not sniper_anim.has_animation(SNIPER_ANIM_VIEW):
+		push_warning("У AnimationPlayer снайперки немає анімації \"%s\"." % SNIPER_ANIM_VIEW)
 		return
-	_sniper_tween_kill()
-	sniper_holder.position = _sniper_base_pos + Vector3(0.05, -0.55, 0.20)
-	sniper_holder.rotation = _sniper_base_rot + Vector3(deg_to_rad(-40.0), 0.0, 0.0)
-	_sniper_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
-	_sniper_tween.tween_property(sniper_holder, "position", _sniper_base_pos, sniper_draw_time)
-	_sniper_tween.tween_property(sniper_holder, "rotation", _sniper_base_rot, sniper_draw_time)
+	var duration: float = _sniper_play(SNIPER_ANIM_VIEW)
+	var my_id: int = _sniper_inspect_id
+	if _has_authority():
+		is_inspecting = true
 
-
-func _sniper_play_bolt() -> void:
-	if sniper_holder == null:
+	await get_tree().create_timer(duration).timeout
+	# Осмотр перервали (постріл / перезарядка / приціл / зміна зброї) — таймер застарів.
+	if my_id != _sniper_inspect_id:
 		return
-	_sniper_tween_kill()
-	var t := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_sniper_tween = t
-	# ривок віддачі
-	t.tween_property(sniper_holder, "position", _sniper_base_pos + Vector3(0.0, 0.015, 0.07), 0.07)
-	t.parallel().tween_property(sniper_holder, "rotation", _sniper_base_rot + Vector3(deg_to_rad(4.0), 0.0, 0.0), 0.07)
-	t.tween_interval(0.30)
-	# рух затвора: зброя трохи опускається й нахиляється
-	t.tween_property(sniper_holder, "position", _sniper_base_pos + Vector3(0.0, -0.03, 0.04), 0.25)
-	t.parallel().tween_property(sniper_holder, "rotation", _sniper_base_rot + Vector3(deg_to_rad(-6.0), 0.0, 0.0), 0.25)
-	t.tween_interval(0.25)
-	t.tween_property(sniper_holder, "position", _sniper_base_pos, 0.30)
-	t.parallel().tween_property(sniper_holder, "rotation", _sniper_base_rot, 0.30)
+	_sniper_reset_pose()
+	if _has_authority():
+		is_inspecting = false
 
 
-func _sniper_play_reload() -> void:
-	if sniper_holder == null:
-		return
-	_sniper_tween_kill()
-	var move_t: float = 0.35
-	var hold_t: float = maxf(sniper_reload_time - move_t * 2.0, 0.1)
-	var t := create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-	_sniper_tween = t
-	t.tween_property(sniper_holder, "position", _sniper_base_pos + Vector3(-0.03, -0.30, 0.10), move_t)
-	t.parallel().tween_property(sniper_holder, "rotation", _sniper_base_rot + Vector3(deg_to_rad(-25.0), 0.0, deg_to_rad(8.0)), move_t)
-	t.tween_interval(hold_t)
-	t.tween_property(sniper_holder, "position", _sniper_base_pos, move_t)
-	t.parallel().tween_property(sniper_holder, "rotation", _sniper_base_rot, move_t)
+func _sniper_cancel_inspect() -> void:
+	if sniper_anim and sniper_anim.is_playing() and sniper_anim.current_animation == SNIPER_ANIM_VIEW:
+		_sniper_reset_pose()
+	if _has_authority() and current_weapon == Weapon.SNIPER:
+		is_inspecting = false
 
 
 # ------------------------------------------------------------------

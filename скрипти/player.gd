@@ -1,9 +1,9 @@
 extends CharacterBody3D
 
 @export_category("CS2 Movement Settings")
-@export var max_speed: float = 6.5
-@export var walk_speed: float = 3.4
-@export var crouch_speed: float = 2.8
+@export var max_speed: float = 5.5   # ≈ АК-47 у CS2 (215 u/s)
+@export var walk_speed: float = 2.9   # Shift, ≈ 52% від бігу, як у CS2
+@export var crouch_speed: float = 1.9   # присід, ≈ 34% від бігу, як у CS2
 @export var jump_velocity: float = 5.6
 @export var custom_gravity: float = 15.5
 @export var ground_acceleration: float = 5.5
@@ -60,6 +60,19 @@ var _original_collision_mask: int
 # Вся візуальна частина смерті (анімація + камера) живе в окремому скрипті.
 const PlayerDeath := preload("res://скрипти/death.gd")
 var _death: RefCounted = null
+
+# Бойовий HUD (червоні краї при уроні, HP як у CS2, картки серії вбивств) — лише для власника.
+const CombatHud := preload("res://скрипти/combat_hud.gd")
+var _hud: CombatHud = null
+
+# Меню паузи (ESC): Resume / Exit to Main Menu. Створюється лише для власника.
+const PauseMenu := preload("res://скрипти/pause_menu.gd")
+var _pause_menu: PauseMenu = null
+
+# true, поки відкрите меню паузи — керування персонажем і зброєю вимкнене.
+var paused: bool:
+	get:
+		return _pause_menu != null and _pause_menu.is_open
 
 # ---- Команди (КТ / Т) ----
 # Команду визначає сервер (world.gd) і надсилає через _set_team().
@@ -168,6 +181,14 @@ func _ready() -> void:
 
 	camera.current = true
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	_hud = CombatHud.new()
+	_hud.name = "CombatHud"
+	add_child(_hud)
+	_pause_menu = PauseMenu.new()
+	_pause_menu.name = "PauseMenu"
+	add_child(_pause_menu)
+	if health_label:
+		health_label.visible = false   # старий "HP: 100" замінено новим HUD
 	_update_health_hud()
 
 
@@ -177,7 +198,15 @@ func _get_world() -> Node:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not is_multiplayer_authority() or is_dead:
+	if not is_multiplayer_authority():
+		return
+
+	# ESC працює завжди (навіть коли гравця вбито).
+	if event.is_action_pressed("ui_cancel"):
+		_handle_escape()
+		return
+
+	if is_dead or paused:
 		return
 
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -185,11 +214,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		head.rotate_x(-event.relative.y * mouse_sensitivity)
 		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-max_look_angle), deg_to_rad(max_look_angle))
 
-	if event.is_action_pressed("ui_cancel"):
-		if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
-			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		else:
-			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+# ESC: закрити меню паузи -> або закрити меню зброї -> або відкрити меню паузи.
+func _handle_escape() -> void:
+	if _pause_menu == null:
+		return
+	if _pause_menu.is_open:
+		_pause_menu.close()
+		return
+	if bool(camera.get("_weapon_menu_open")):
+		camera.call("_close_weapon_menu")
+		return
+	_pause_menu.open()
 
 
 func _physics_process(delta: float) -> void:
@@ -211,11 +247,11 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var input_dir := Input.get_vector("a", "d", "w", "s")
+	var input_dir := Vector2.ZERO if paused else Input.get_vector("a", "d", "w", "s")
 	var wish_dir := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	var is_crouching := _update_crouch(Input.is_key_pressed(KEY_CTRL))
-	var is_walking := Input.is_key_pressed(KEY_SHIFT) and not is_crouching
+	var is_crouching := _update_crouch(Input.is_key_pressed(KEY_CTRL) and not paused)
+	var is_walking := Input.is_key_pressed(KEY_SHIFT) and not is_crouching and not paused
 
 	var target_head_y := _head_base_y - (crouch_head_offset if is_crouching else 0.0)
 	head.position.y = lerpf(head.position.y, target_head_y, clampf(crouch_lerp_speed * delta, 0.0, 1.0))
@@ -226,7 +262,7 @@ func _physics_process(delta: float) -> void:
 	elif is_walking:
 		target_speed = walk_speed
 
-	if Input.is_action_just_pressed("ui_accept"):
+	if Input.is_action_just_pressed("ui_accept") and not paused:
 		_jump_buffer_timer = jump_buffer_time
 	else:
 		_jump_buffer_timer = maxf(_jump_buffer_timer - delta, 0.0)
@@ -411,12 +447,16 @@ func _apply_damage(amount: float, attacker_id: int = -1) -> void:
 	health -= amount
 	health = max(health, 0.0)
 	_update_health_hud()
+	if _hud:
+		_hud.on_damage(amount)
 
 	if health <= 0.0:
 		_die()
 
 
 func _die() -> void:
+	if _hud:
+		_hud.on_death()   # скидає серію вбивств, червоні краї
 	Matchmaker.rpc_room(self, "_set_dead_state", [true])
 	Matchmaker.rpc_room(self, "_play_death_sound")
 
@@ -481,6 +521,8 @@ func _revive() -> void:
 	velocity = Vector3.ZERO
 	health = max_health
 	is_dead = false
+	if _hud:
+		_hud.on_revive()
 	last_attacker_id = -1
 
 	_apply_team_visual()
@@ -569,3 +611,5 @@ func _set_team(value: int) -> void:
 func _update_health_hud() -> void:
 	if health_label and is_multiplayer_authority():
 		health_label.text = "HP: %d" % int(health)
+	if _hud and is_multiplayer_authority():
+		_hud.set_health(health, max_health)

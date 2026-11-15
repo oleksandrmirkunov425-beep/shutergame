@@ -12,6 +12,10 @@ const DEFAULT_NICK_PREFIX := "Player"
 
 var nick_input: LineEdit = null
 var bot_button: Button = null
+var balance_label: Label = null
+var _recent_gain: int = 0
+var _bg_attempts: int = 0
+var _bg_timer: Timer = null
 
 const CROSSHAIR_SCRIPT := preload("res://weapons/crosschair.gd")
 const SETTINGS_SCRIPT := preload("res://скрипти/game_settings.gd")
@@ -42,6 +46,58 @@ func _ready() -> void:
 	_make_settings_ui()
 	Network.connection_succeeded.connect(_on_connected)
 	Network.connection_failed.connect(_on_connection_failed)
+
+	_make_balance_label()
+	Economy.profile_updated.connect(_on_profile_updated)
+	_bg_timer = Timer.new()
+	_bg_timer.one_shot = true
+	_bg_timer.timeout.connect(_bg_connect)
+	add_child(_bg_timer)
+	_on_profile_updated()
+	_bg_connect()
+
+
+# ---------- Баланс ----------
+func _make_balance_label() -> void:
+	balance_label = Label.new()
+	balance_label.position = Vector2(1020, 215)
+	balance_label.add_theme_font_size_override("font_size", 28)
+	add_child(balance_label)
+	_refresh_balance()
+
+
+func _refresh_balance() -> void:
+	if balance_label == null:
+		return
+	if Economy.view_coins < 0:
+		balance_label.text = "Баланс: ..."
+		return
+	var t := "Баланс: %d" % Economy.view_coins
+	if _recent_gain > 0:
+		t += "  (+%d)" % _recent_gain
+	balance_label.text = t
+
+
+func _on_profile_updated() -> void:
+	if Economy.view_last_reward > 0:
+		_recent_gain = Economy.view_last_reward
+		Economy.view_last_reward = 0
+	_refresh_balance()
+
+
+func _online() -> bool:
+	var p := multiplayer.multiplayer_peer
+	return p is WebSocketMultiplayerPeer and p.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
+
+
+# Фоновий коннект до сервера просто щоб показати баланс і відправити результат матчу з ботом.
+func _bg_connect() -> void:
+	if _searching or _online():
+		return
+	if _bg_attempts >= MAX_CONNECT_ATTEMPTS:
+		return
+	_bg_attempts += 1
+	Network.join_game(ip_input.text.strip_edges())
 
 
 # Нік: не зберігається на диск (живе лише до закриття гри), тож для тесту
@@ -351,6 +407,10 @@ func _on_button_pressed() -> void:
 	_searching = true
 	_attempts = 0
 	network_panel.visible = true
+	if _online():
+		status_label.text = "Пошук суперника..."
+		Matchmaker.find_match()
+		return
 	_connect()
 
 
@@ -361,6 +421,11 @@ func _connect() -> void:
 
 
 func _on_connected() -> void:
+	_bg_attempts = 0
+	Economy.send_hello()
+	if Engine.has_meta("pending_bot_win"):
+		Economy.report_bot_win.rpc_id(1, int(Engine.get_meta("pending_bot_win")))
+		Engine.remove_meta("pending_bot_win")
 	if not _searching:
 		return
 	status_label.text = "Пошук суперника..."
@@ -369,6 +434,7 @@ func _on_connected() -> void:
 
 func _on_connection_failed() -> void:
 	if not _searching:
+		_bg_timer.start(5.0)   # сервер міг спати — пробуємо ще
 		return
 	if _attempts >= MAX_CONNECT_ATTEMPTS:
 		_searching = false
@@ -384,6 +450,8 @@ func _on_cancel_pressed() -> void:
 	_searching = false
 	Matchmaker.cancel_search()
 	network_panel.visible = false
+	_bg_attempts = 0
+	_bg_timer.start(1.0)   # cancel_search розриває зв'язок — відновлюємо його для балансу
 
 
 func _on_button_3_pressed() -> void:
