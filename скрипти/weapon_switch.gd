@@ -264,7 +264,8 @@ func _ready() -> void:
 
 	# Мій вибраний ніж із меню; розсилаємо суперникові трохи згодом і на початку кожного раунду.
 	knife_skin = Loadout.knife
-	_apply_ak_skin(Loadout.ak_skin)
+	_apply_weapon_skin(ak47, Loadout.ak_skin)
+	_apply_weapon_skin(sniper_holder, Loadout.awp_skin)
 	_apply_visibility()
 	get_tree().create_timer(1.0).timeout.connect(announce_knife_skin)
 
@@ -1428,22 +1429,23 @@ func _get_aim_point(direction: Vector3) -> Vector3:
 
 
 # ------------------------------------------------------------------
-# СКІНИ НА АК-47
-# Модель АК не має UV-розгортки, тому малюнок скіна (вид збоку) накладається шейдером
+# СКІНИ НА ЗБРОЮ (АК-47, AWP)
+# Модель не має UV-розгортки, тому малюнок скіна (вид збоку) накладається шейдером
 # проєкцією збоку: позиція на малюнку береться з розмірів моделі, а не з UV.
 # Скін бачить лише власник (АК від першої особи) — тож по мережі його синхронізувати не треба.
 # ------------------------------------------------------------------
 const AK_SKIN_SHADER := preload("res://skins/skin_side_projection.gdshader")
 const AK_SKIN_TEXTURES := {
 	"ak47_samurai": preload("res://skins/ak47_samurai.png"),
+	"awp_samurai": preload("res://skins/awp_samurai.png"),
 }
 var _ak_default_overrides: Dictionary = {}   # MeshInstance3D -> стандартний material_override (щоб скін можна було зняти)
 
 
-func _apply_ak_skin(skin_id: String) -> void:
-	if ak47 == null:
+func _apply_weapon_skin(root: Node3D, skin_id: String) -> void:
+	if root == null:
 		return
-	var meshes: Array = ak47.find_children("*", "MeshInstance3D", true, false)
+	var meshes: Array = root.find_children("*", "MeshInstance3D", true, false)
 	if meshes.is_empty():
 		return
 	for mi in meshes:

@@ -1390,7 +1390,7 @@ transform = Transform3D(-0.026938478, -1.6675733, -1.1038437, 1.7323383, -0.5710
 visible = false
 
 [node name="Knife_Root" parent="head/Camera3D/butterfly" index="0" unique_id=846286799]
-transform = Transform3D(0.99999964, 0.0006404215, -0.00042694612, -0.0006404209, 0.99999964, 1.7283039e-06, 0.0004269472, -1.4548783e-06, 0.99999964, -2.2071132e-05, -6.0869006e-05, 2.3482195e-05)
+transform = Transform3D(0.99999964, 0.00064042147, -0.00042694615, -0.0006404208, 0.99999964, 1.728304e-06, 0.00042694726, -1.4548784e-06, 0.9999996, -2.2071132e-05, -6.0869006e-05, 2.3482195e-05)
 
 [node name="AnimationPlayer" parent="head/Camera3D/butterfly" index="1" unique_id=737131678]
 libraries/ = SubResource("AnimationLibrary_butterfly")

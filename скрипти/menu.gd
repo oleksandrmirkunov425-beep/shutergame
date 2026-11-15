@@ -15,6 +15,7 @@ var bot_button: Button = null
 var balance_label: Label = null
 var knife_label: Label = null
 var ak_label: Label = null
+var awp_label: Label = null
 var _shop_layer: CanvasLayer = null
 var _shop_rows: VBoxContainer = null
 var _shop_balance: Label = null
@@ -169,6 +170,11 @@ func _make_knife_ui() -> void:
 	ak_label.position = Vector2(1020, 415)
 	ak_label.add_theme_font_size_override("font_size", 28)
 	add_child(ak_label)
+
+	awp_label = Label.new()
+	awp_label.position = Vector2(1020, 455)
+	awp_label.add_theme_font_size_override("font_size", 28)
+	add_child(awp_label)
 
 	var shop_btn := Button.new()
 	shop_btn.text = "Магазин"
@@ -348,13 +354,17 @@ func _refresh_knife_label() -> void:
 func _refresh_skin_label() -> void:
 	if ak_label == null:
 		return
-	var sid: String = str(Economy.view_skins.get("ak47", ""))
+	ak_label.text = "АК-47: %s" % _skin_display_name("ak47", Loadout.ak_skin)
+	awp_label.text = "AWP: %s" % _skin_display_name("awp", Loadout.awp_skin)
+
+
+func _skin_display_name(weapon: String, local_skin: String) -> String:
+	var sid: String = str(Economy.view_skins.get(weapon, ""))
 	if sid == "":
-		sid = Loadout.ak_skin
-	var skin_name := "стандартний"
+		sid = local_skin
 	if Economy.WEAPON_SKINS.has(sid):
-		skin_name = str(Economy.WEAPON_SKINS[sid]["skin"])
-	ak_label.text = "АК-47: %s" % skin_name
+		return str(Economy.WEAPON_SKINS[sid]["skin"])
+	return "стандартний"
 
 # Кнопка "Налаштування" під вибором ножа відкриває вікно з вкладками "Миша" і "Приціл".
 func _make_settings_ui() -> void:

@@ -28,9 +28,10 @@ const DEFAULT_KNIFE := "bolisong"
 # "weapon" — для якої зброї скін; "name" — повна назва в магазині; "skin" — коротка назва в меню.
 const WEAPON_SKINS := {
 	"ak47_samurai": {"weapon": "ak47", "name": "AK-47 | Самурай", "skin": "Самурай", "price": 20},
+	"awp_samurai": {"weapon": "awp", "name": "AWP | Самурай", "skin": "Самурай", "price": 20},
 }
-const SKIN_ORDER := ["ak47_samurai"]
-const SKIN_WEAPONS := ["ak47"]
+const SKIN_ORDER := ["ak47_samurai", "awp_samurai"]
+const SKIN_WEAPONS := ["ak47", "awp"]
 
 const DB_PATH := "user://economy_db.json"      # сервер, лише якщо Firebase не налаштований
 const TOKEN_PATH := "user://account.cfg"       # клієнт: лише "логін" (токен), не гроші
@@ -133,7 +134,8 @@ func sync_profile(coins: int, reward: int, owned: Array, equipped: String, skins
 	view_owned = owned
 	view_equipped = equipped
 	view_skins = skins
-	Loadout.set_ak_skin(str(skins.get("ak47", "")))   # саме цей скін гра покаже на АК у матчі
+	Loadout.set_ak_skin(str(skins.get("ak47", "")))   # саме ці скіни гра покаже на зброї у матчі
+	Loadout.set_awp_skin(str(skins.get("awp", "")))
 	if reward > 0:
 		view_last_reward = reward
 	if KNIVES.has(equipped):

@@ -5,9 +5,11 @@ extends Node
 const SAVE_PATH := "user://loadout.cfg"
 const KNIVES: Array = ["karambit", "bolisong", "butterfly"]
 const AK_SKINS: Array = ["ak47_samurai"]   # "" = стандартний АК
+const AWP_SKINS: Array = ["awp_samurai"]   # "" = стандартна AWP
 
 var knife: String = "bolisong"
 var ak_skin: String = ""
+var awp_skin: String = ""
 
 
 func _ready() -> void:
@@ -19,6 +21,9 @@ func _ready() -> void:
 		var saved_skin: String = cfg.get_value("loadout", "ak_skin", "")
 		if AK_SKINS.has(saved_skin):
 			ak_skin = saved_skin
+		var saved_awp: String = cfg.get_value("loadout", "awp_skin", "")
+		if AWP_SKINS.has(saved_awp):
+			awp_skin = saved_awp
 
 
 func set_knife(skin: String) -> void:
@@ -35,8 +40,16 @@ func set_ak_skin(skin: String) -> void:
 	_save()
 
 
+func set_awp_skin(skin: String) -> void:
+	if skin != "" and not AWP_SKINS.has(skin):
+		return
+	awp_skin = skin
+	_save()
+
+
 func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("loadout", "knife", knife)
 	cfg.set_value("loadout", "ak_skin", ak_skin)
+	cfg.set_value("loadout", "awp_skin", awp_skin)
 	cfg.save(SAVE_PATH)

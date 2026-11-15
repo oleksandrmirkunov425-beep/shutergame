@@ -3,6 +3,3 @@
 [ext_resource type="PackedScene" uid="uid://dxae4d305rxpb" path="res://scenes/player.tscn" id="1_ig7tw"]
 
 [node name="main" unique_id=188924596 instance=ExtResource("1_ig7tw")]
-
-[node name="DirectionalLight3D2" parent="." index="7" unique_id=432823369]
-visible = false
