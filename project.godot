@@ -21,6 +21,8 @@ Network="*uid://c4cp5sq22nvfk"
 Hud="*uid://bvfghvi1e2i15"
 EventBus="*uid://b4tfldevnyw1e"
 Matchmaker="*res://autoload/matchmaker.gd"
+Loadout="*res://autoload/loadout.gd"
+Economy="*res://autoload/economy.gd"
 
 [display]
 
