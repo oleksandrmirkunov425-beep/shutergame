@@ -264,6 +264,7 @@ func _ready() -> void:
 
 	# Мій вибраний ніж із меню; розсилаємо суперникові трохи згодом і на початку кожного раунду.
 	knife_skin = Loadout.knife
+	_apply_ak_skin(Loadout.ak_skin)
 	_apply_visibility()
 	get_tree().create_timer(1.0).timeout.connect(announce_knife_skin)
 
@@ -1424,6 +1425,78 @@ func _get_aim_point(direction: Vector3) -> Vector3:
 	if result:
 		return result.position
 	return to
+
+
+# ------------------------------------------------------------------
+# СКІНИ НА АК-47
+# Модель АК не має UV-розгортки, тому малюнок скіна (вид збоку) накладається шейдером
+# проєкцією збоку: позиція на малюнку береться з розмірів моделі, а не з UV.
+# Скін бачить лише власник (АК від першої особи) — тож по мережі його синхронізувати не треба.
+# ------------------------------------------------------------------
+const AK_SKIN_SHADER := preload("res://skins/skin_side_projection.gdshader")
+const AK_SKIN_TEXTURES := {
+	"ak47_samurai": preload("res://skins/ak47_samurai.png"),
+}
+var _ak_default_overrides: Dictionary = {}   # MeshInstance3D -> стандартний material_override (щоб скін можна було зняти)
+
+
+func _apply_ak_skin(skin_id: String) -> void:
+	if ak47 == null:
+		return
+	var meshes: Array = ak47.find_children("*", "MeshInstance3D", true, false)
+	if meshes.is_empty():
+		return
+	for mi in meshes:
+		if not _ak_default_overrides.has(mi):
+			_ak_default_overrides[mi] = (mi as MeshInstance3D).material_override
+	if not AK_SKIN_TEXTURES.has(skin_id):   # "" або невідомий id -> стандартний вигляд
+		for mi in meshes:
+			(mi as MeshInstance3D).material_override = _ak_default_overrides[mi]
+		return
+
+	# Спільна «коробка» всіх деталей АК (в локальних координатах мешів).
+	var box: AABB = (meshes[0] as MeshInstance3D).get_aabb()
+	for i in range(1, meshes.size()):
+		box = box.merge((meshes[i] as MeshInstance3D).get_aabb())
+
+	# Осі моделі: найдовша — уздовж ствола, найкоротша — вшир, середня — вгору.
+	var long_i := 0
+	var wide_i := 0
+	for i in 3:
+		if box.size[i] > box.size[long_i]:
+			long_i = i
+		if box.size[i] < box.size[wide_i]:
+			wide_i = i
+	var up_i := 3 - long_i - wide_i
+
+	var u_axis := Vector3.ZERO
+	u_axis[long_i] = -1.0 if long_i == 2 else 1.0   # «вперед» у Godot = -Z, в FBX-координатах моделі = +Y
+	var v_axis := Vector3.ZERO
+	v_axis[up_i] = -1.0                             # на малюнку «вниз» = більше v
+	var side_axis := Vector3.ZERO
+	side_axis[wide_i] = 1.0
+
+	var mat := ShaderMaterial.new()
+	mat.shader = AK_SKIN_SHADER
+	mat.set_shader_parameter("skin_texture", AK_SKIN_TEXTURES[skin_id])
+	mat.set_shader_parameter("u_axis", u_axis)
+	mat.set_shader_parameter("v_axis", v_axis)
+	mat.set_shader_parameter("side_axis", side_axis)
+	mat.set_shader_parameter("u_range", _axis_range(box, u_axis))
+	mat.set_shader_parameter("v_range", _axis_range(box, v_axis))
+	for mi in meshes:
+		(mi as MeshInstance3D).material_override = mat
+
+
+# (мінімум, розмір) значень dot(p, axis) по всій «коробці».
+func _axis_range(box: AABB, axis: Vector3) -> Vector2:
+	var lo := INF
+	var hi := -INF
+	for i in 8:
+		var d := axis.dot(box.get_endpoint(i))
+		lo = minf(lo, d)
+		hi = maxf(hi, d)
+	return Vector2(lo, maxf(hi - lo, 0.0001))
 
 
 # ------------------------------------------------------------------

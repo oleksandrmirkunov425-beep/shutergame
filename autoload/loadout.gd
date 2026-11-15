@@ -1,11 +1,13 @@
 extends Node
-# Вибраний ніж. Що вибрано і що куплено — вирішує сервер (Economy); тут лише локальна копія,
-# щоб гра знала, який ніж показувати (в т.ч. у матчі проти бота без сервера).
+# Вибраний ніж і скін зброї. Що вибрано і що куплено — вирішує сервер (Economy); тут лише локальна копія,
+# щоб гра знала, що показувати (в т.ч. у матчі проти бота без сервера).
 
 const SAVE_PATH := "user://loadout.cfg"
 const KNIVES: Array = ["karambit", "bolisong", "butterfly"]
+const AK_SKINS: Array = ["ak47_samurai"]   # "" = стандартний АК
 
 var knife: String = "bolisong"
+var ak_skin: String = ""
 
 
 func _ready() -> void:
@@ -14,12 +16,27 @@ func _ready() -> void:
 		var saved: String = cfg.get_value("loadout", "knife", "bolisong")
 		if KNIVES.has(saved):
 			knife = saved
+		var saved_skin: String = cfg.get_value("loadout", "ak_skin", "")
+		if AK_SKINS.has(saved_skin):
+			ak_skin = saved_skin
 
 
 func set_knife(skin: String) -> void:
 	if not KNIVES.has(skin):
 		return
 	knife = skin
+	_save()
+
+
+func set_ak_skin(skin: String) -> void:
+	if skin != "" and not AK_SKINS.has(skin):
+		return
+	ak_skin = skin
+	_save()
+
+
+func _save() -> void:
 	var cfg := ConfigFile.new()
 	cfg.set_value("loadout", "knife", knife)
+	cfg.set_value("loadout", "ak_skin", ak_skin)
 	cfg.save(SAVE_PATH)

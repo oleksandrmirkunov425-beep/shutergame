@@ -23,6 +23,15 @@ const KNIVES := {
 const KNIFE_ORDER := ["bolisong", "karambit", "butterfly"]
 const DEFAULT_KNIFE := "bolisong"
 
+# ---------- Скіни зброї ----------
+# id скіна має збігатися з Loadout.AK_SKINS і з weapon_switch.gd (AK_SKIN_TEXTURES).
+# "weapon" — для якої зброї скін; "name" — повна назва в магазині; "skin" — коротка назва в меню.
+const WEAPON_SKINS := {
+	"ak47_samurai": {"weapon": "ak47", "name": "AK-47 | Самурай", "skin": "Самурай", "price": 20},
+}
+const SKIN_ORDER := ["ak47_samurai"]
+const SKIN_WEAPONS := ["ak47"]
+
 const DB_PATH := "user://economy_db.json"      # сервер, лише якщо Firebase не налаштований
 const TOKEN_PATH := "user://account.cfg"       # клієнт: лише "логін" (токен), не гроші
 const FETCH_RETRIES := 3
@@ -32,6 +41,7 @@ var view_coins: int = -1          # -1 = ще не отримали від се�
 var view_last_reward: int = 0     # скільки щойно нараховано (меню покаже "+N")
 var view_owned: Array = []        # куплені ножі
 var view_equipped: String = ""    # вибраний ніж
+var view_skins: Dictionary = {}   # зброя -> вибраний скін ("" = стандартний), напр. {"ak47": "ak47_samurai"}
 signal profile_updated
 signal shop_message(text: String)
 
@@ -75,6 +85,7 @@ static func _default_profile() -> Dictionary:
 		"coins": 0,
 		"owned": {DEFAULT_KNIFE: true},
 		"equipped": DEFAULT_KNIFE,
+		"skins": {},
 		"last_bot_unix": 0, "bot_day": "", "bot_today": 0,
 	}
 
@@ -87,6 +98,14 @@ static func _normalize(p: Dictionary) -> void:
 	var eq := str(p.get("equipped", DEFAULT_KNIFE))
 	if not KNIVES.has(eq) or not p["owned"].has(eq):
 		p["equipped"] = DEFAULT_KNIFE
+	# Вибраний скін зброї має бути справді куплений і належати саме цій зброї.
+	if not (p.get("skins") is Dictionary):
+		p["skins"] = {}
+	var skins: Dictionary = p["skins"]
+	for weapon in skins.keys():
+		var sid := str(skins[weapon])
+		if sid != "" and (not WEAPON_SKINS.has(sid) or WEAPON_SKINS[sid]["weapon"] != weapon or not p["owned"].has(sid)):
+			skins[weapon] = ""
 
 
 # ====================== КЛІЄНТ ======================
@@ -107,12 +126,14 @@ func _get_token() -> String:
 
 
 @rpc("authority", "reliable")
-func sync_profile(coins: int, reward: int, owned: Array, equipped: String) -> void:
+func sync_profile(coins: int, reward: int, owned: Array, equipped: String, skins: Dictionary) -> void:
 	if multiplayer.is_server():
 		return
 	view_coins = coins
 	view_owned = owned
 	view_equipped = equipped
+	view_skins = skins
+	Loadout.set_ak_skin(str(skins.get("ak47", "")))   # саме цей скін гра покаже на АК у матчі
 	if reward > 0:
 		view_last_reward = reward
 	if KNIVES.has(equipped):
@@ -243,6 +264,47 @@ func request_equip_knife(knife_id: String) -> void:
 	_push(peer, 0)
 
 
+# Скіни зброї: так само, усе перевіряє сервер (ціна, баланс, чи вже куплено, чи скін для цієї зброї).
+@rpc("any_peer", "reliable")
+func request_buy_skin(skin_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var p := _profile_of(peer)
+	if p.is_empty() or not WEAPON_SKINS.has(skin_id):
+		return
+	if p["owned"].has(skin_id):
+		_reply(peer, "Цей скін у тебе вже є.")
+		return
+	var price: int = WEAPON_SKINS[skin_id]["price"]
+	if int(p["coins"]) < price:
+		_reply(peer, "Не вистачає коїнів: потрібно %d." % price)
+		return
+	p["coins"] = int(p["coins"]) - price                      # спочатку списуємо
+	p["owned"][skin_id] = true
+	p["skins"][WEAPON_SKINS[skin_id]["weapon"]] = skin_id     # куплений скін одразу вибираємо
+	_save_profile(_peer_acc[peer])
+	_push(peer, 0)
+	_reply(peer, "Куплено: %s!" % WEAPON_SKINS[skin_id]["name"])
+
+
+# skin_id = "" — зняти скін (повернути стандартний вигляд зброї).
+@rpc("any_peer", "reliable")
+func request_equip_skin(weapon: String, skin_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var p := _profile_of(peer)
+	if p.is_empty() or not SKIN_WEAPONS.has(weapon):
+		return
+	if skin_id != "":
+		if not WEAPON_SKINS.has(skin_id) or WEAPON_SKINS[skin_id]["weapon"] != weapon or not p["owned"].has(skin_id):
+			return   # вибрати можна тільки куплене і лише для своєї зброї
+	p["skins"][weapon] = skin_id
+	_save_profile(_peer_acc[peer])
+	_push(peer, 0)
+
+
 func _reply(peer: int, text: String) -> void:
 	if peer != 1 and multiplayer.get_peers().has(peer):
 		shop_reply.rpc_id(peer, text)
@@ -256,7 +318,7 @@ func _push(peer: int, reward: int) -> void:
 	var p := _profile_of(peer)
 	if p.is_empty() or peer == 1 or not multiplayer.get_peers().has(peer):
 		return
-	sync_profile.rpc_id(peer, int(p["coins"]), reward, p["owned"].keys(), str(p["equipped"]))
+	sync_profile.rpc_id(peer, int(p["coins"]), reward, p["owned"].keys(), str(p["equipped"]), p["skins"])
 
 
 # ====================== СХОВИЩЕ ======================

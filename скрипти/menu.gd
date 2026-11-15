@@ -14,6 +14,7 @@ var nick_input: LineEdit = null
 var bot_button: Button = null
 var balance_label: Label = null
 var knife_label: Label = null
+var ak_label: Label = null
 var _shop_layer: CanvasLayer = null
 var _shop_rows: VBoxContainer = null
 var _shop_balance: Label = null
@@ -90,6 +91,7 @@ func _on_profile_updated() -> void:
 		Economy.view_last_reward = 0
 	_refresh_balance()
 	_refresh_knife_label()
+	_refresh_skin_label()
 	if _shop_layer != null and _shop_layer.visible:
 		_refresh_shop()
 
@@ -163,6 +165,11 @@ func _make_knife_ui() -> void:
 	knife_label.add_theme_font_size_override("font_size", 28)
 	add_child(knife_label)
 
+	ak_label = Label.new()
+	ak_label.position = Vector2(1020, 415)
+	ak_label.add_theme_font_size_override("font_size", 28)
+	add_child(ak_label)
+
 	var shop_btn := Button.new()
 	shop_btn.text = "Магазин"
 	shop_btn.position = Vector2(1020, 340)
@@ -176,6 +183,7 @@ func _make_knife_ui() -> void:
 
 	_make_shop_overlay()
 	_refresh_knife_label()
+	_refresh_skin_label()
 
 
 func _make_shop_overlay() -> void:
@@ -207,7 +215,7 @@ func _make_shop_overlay() -> void:
 	margin.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Магазин ножів"
+	title.text = "Магазин"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
 	vbox.add_child(title)
@@ -247,6 +255,7 @@ func _refresh_shop() -> void:
 	else:
 		_shop_balance.text = "Баланс: ... (чекаємо відповідь сервера)"
 
+	_add_shop_header("Ножі")
 	for id in Economy.KNIFE_ORDER:
 		var info: Dictionary = Economy.KNIVES[id]
 		var owned: bool = Economy.view_owned.has(id)
@@ -282,6 +291,52 @@ func _refresh_shop() -> void:
 			btn.pressed.connect(func(): Economy.request_buy_knife.rpc_id(1, id))
 		row.add_child(btn)
 
+	# Скіни зброї
+	_add_shop_header("Скіни зброї")
+	for sid in Economy.SKIN_ORDER:
+		var sinfo: Dictionary = Economy.WEAPON_SKINS[sid]
+		var weapon: String = sinfo["weapon"]
+		var s_owned: bool = Economy.view_owned.has(sid)
+		var s_equipped: bool = str(Economy.view_skins.get(weapon, "")) == sid
+
+		var srow := HBoxContainer.new()
+		srow.add_theme_constant_override("separation", 12)
+		_shop_rows.add_child(srow)
+
+		var s_name := Label.new()
+		s_name.text = str(sinfo["name"])
+		s_name.custom_minimum_size = Vector2(220, 0)
+		s_name.add_theme_font_size_override("font_size", 24)
+		srow.add_child(s_name)
+
+		var s_price := Label.new()
+		s_price.text = "Є у тебе" if s_owned else "%d коїнів" % int(sinfo["price"])
+		s_price.custom_minimum_size = Vector2(150, 0)
+		s_price.add_theme_font_size_override("font_size", 20)
+		srow.add_child(s_price)
+
+		var s_btn := Button.new()
+		s_btn.custom_minimum_size = Vector2(160, 44)
+		s_btn.disabled = not online
+		if s_equipped:
+			s_btn.text = "Зняти"
+			s_btn.pressed.connect(func(): Economy.request_equip_skin.rpc_id(1, weapon, ""))
+		elif s_owned:
+			s_btn.text = "Вибрати"
+			s_btn.pressed.connect(func(): Economy.request_equip_skin.rpc_id(1, weapon, sid))
+		else:
+			s_btn.text = "Купити"
+			s_btn.pressed.connect(func(): Economy.request_buy_skin.rpc_id(1, sid))
+		srow.add_child(s_btn)
+
+
+func _add_shop_header(text: String) -> void:
+	var h := Label.new()
+	h.text = text
+	h.add_theme_font_size_override("font_size", 20)
+	h.modulate = Color(1, 1, 1, 0.65)
+	_shop_rows.add_child(h)
+
 
 func _refresh_knife_label() -> void:
 	if knife_label == null:
@@ -289,6 +344,17 @@ func _refresh_knife_label() -> void:
 	var id: String = Economy.view_equipped if Economy.view_equipped != "" else Loadout.knife
 	var info: Dictionary = Economy.KNIVES.get(id, {"name": "?"})
 	knife_label.text = "Ніж: %s" % info["name"]
+
+func _refresh_skin_label() -> void:
+	if ak_label == null:
+		return
+	var sid: String = str(Economy.view_skins.get("ak47", ""))
+	if sid == "":
+		sid = Loadout.ak_skin
+	var skin_name := "стандартний"
+	if Economy.WEAPON_SKINS.has(sid):
+		skin_name = str(Economy.WEAPON_SKINS[sid]["skin"])
+	ak_label.text = "АК-47: %s" % skin_name
 
 # Кнопка "Налаштування" під вибором ножа відкриває вікно з вкладками "Миша" і "Приціл".
 func _make_settings_ui() -> void:
