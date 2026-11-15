@@ -127,6 +127,8 @@ static func fit_to_model(player: Node3D, model: Node3D) -> void:
 		var size: Vector3 = (maxs[part] - mins[part]) + Vector3(0.02, 0.02, 0.02)
 		size = size.max(Vector3(0.05, 0.05, 0.05))
 		hb.position = (mins[part] + maxs[part]) * 0.5
+		hb.remove_meta("base_pos")    # нова "стояча" база для set_crouch
+		hb.remove_meta("base_size")
 		for c in hb.get_children():
 			if c is CollisionShape3D:
 				var box := BoxShape3D.new()
@@ -143,3 +145,30 @@ static func set_enabled(player: Node, enabled: bool) -> void:
 	for hb in root.get_children():
 		if hb is CollisionObject3D:
 			(hb as CollisionObject3D).collision_layer = HITBOX_LAYER if enabled else 0
+
+
+# Стискає всі хітбокси по висоті (k = 1 стоїть, k < 1 присів) відносно рівня ніг feet_y
+# (координати відносно гравця). Базові позиція/розмір запам'ятовуються при першому виклику
+# (і скидаються в fit_to_model).
+static func set_crouch(player: Node, k: float, feet_y: float) -> void:
+	var root := player.get_node_or_null("Hitboxes")
+	if root == null:
+		return
+	for hb in root.get_children():
+		var n3 := hb as Node3D
+		if n3 == null:
+			continue
+		var box: BoxShape3D = null
+		for c in hb.get_children():
+			if c is CollisionShape3D and (c as CollisionShape3D).shape is BoxShape3D:
+				box = (c as CollisionShape3D).shape as BoxShape3D
+				break
+		if not hb.has_meta("base_pos"):
+			hb.set_meta("base_pos", n3.position)
+			if box:
+				hb.set_meta("base_size", box.size)
+		var bp: Vector3 = hb.get_meta("base_pos")
+		n3.position = Vector3(bp.x, feet_y + (bp.y - feet_y) * k, bp.z)
+		if box and hb.has_meta("base_size"):
+			var bs: Vector3 = hb.get_meta("base_size")
+			box.size = Vector3(bs.x, bs.y * k, bs.z)

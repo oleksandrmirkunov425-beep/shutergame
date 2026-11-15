@@ -11,10 +11,14 @@ const MAX_CONNECT_ATTEMPTS := 20
 const DEFAULT_NICK_PREFIX := "Player"
 
 var nick_input: LineEdit = null
+var bot_button: Button = null
 
 const CROSSHAIR_SCRIPT := preload("res://weapons/crosschair.gd")
+const SETTINGS_SCRIPT := preload("res://скрипти/game_settings.gd")
 
-var _crosshair_layer: CanvasLayer = null
+var _settings_layer: CanvasLayer = null
+var _sensitivity_slider: HSlider = null
+var _scope_slider: HSlider = null
 var _searching: bool = false
 var _attempts: int = 0
 
@@ -32,8 +36,10 @@ func _ready() -> void:
 
 	join_button.pressed.connect(_on_cancel_pressed)
 	_make_nick_input()
+	_make_bot_button()
+	SETTINGS_SCRIPT.load_settings()
 	_make_knife_buttons()
-	_make_crosshair_ui()
+	_make_settings_ui()
 	Network.connection_succeeded.connect(_on_connected)
 	Network.connection_failed.connect(_on_connection_failed)
 
@@ -61,6 +67,24 @@ func _make_nick_input() -> void:
 	nick_input.text_changed.connect(_store_nick)
 	add_child(nick_input)
 
+
+func _make_bot_button() -> void:
+	# Друга велика кнопка під онлайн-грою. Стару неактивну кнопку магазину ховаємо.
+	var old_shop := get_node_or_null("Button2")
+	if old_shop:
+		old_shop.hide()
+	bot_button = Button.new()
+	bot_button.text = "ГРАТИ ПРОТИ БОТА"
+	bot_button.position = Vector2(292, 450)
+	bot_button.size = Vector2(422, 127)
+	bot_button.add_theme_font_size_override("font_size", 30)
+	bot_button.pressed.connect(_on_bot_button_pressed)
+	add_child(bot_button)
+
+func _on_bot_button_pressed() -> void:
+	if nick_input:
+		_store_nick(nick_input.text)
+	Matchmaker.start_bot_match()
 
 func _store_nick(text: String) -> void:
 	var n := text.strip_edges()
@@ -91,33 +115,34 @@ func _make_knife_buttons() -> void:
 		add_child(b)
 
 
-# Налаштування прицілу: кнопка під вибором ножа відкриває вікно з повзунками й прев'ю.
-func _make_crosshair_ui() -> void:
+# Кнопка "Налаштування" під вибором ножа відкриває вікно з вкладками "Миша" і "Приціл".
+func _make_settings_ui() -> void:
 	CrosshairConfig.ensure_loaded()
 
 	var open_btn := Button.new()
-	open_btn.text = "Приціл"
+	open_btn.text = "Налаштування"
 	open_btn.position = Vector2(1020, 560)
 	open_btn.size = Vector2(250, 60)
-	open_btn.add_theme_font_size_override("font_size", 28)
-	open_btn.pressed.connect(func(): _crosshair_layer.visible = true)
+	open_btn.add_theme_font_size_override("font_size", 26)
+	open_btn.pressed.connect(func(): _settings_layer.visible = true)
 	add_child(open_btn)
 
-	_crosshair_layer = CanvasLayer.new()
-	_crosshair_layer.layer = 10
-	_crosshair_layer.visible = false
-	add_child(_crosshair_layer)
+	_settings_layer = CanvasLayer.new()
+	_settings_layer.layer = 10
+	_settings_layer.visible = false
+	add_child(_settings_layer)
 
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.65)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_crosshair_layer.add_child(dim)
+	_settings_layer.add_child(dim)
 
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.add_child(center)
 
 	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(580, 0)
 	center.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -130,31 +155,72 @@ func _make_crosshair_ui() -> void:
 	margin.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Налаштування прицілу"
+	title.text = "Налаштування"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
 	vbox.add_child(title)
 
+	# Вкладки: Миша | Приціл
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", 10)
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(tabs)
+
+	var tab_group := ButtonGroup.new()
+	var mouse_tab := Button.new()
+	mouse_tab.text = "Миша"
+	mouse_tab.toggle_mode = true
+	mouse_tab.button_group = tab_group
+	mouse_tab.button_pressed = true
+	mouse_tab.custom_minimum_size = Vector2(180, 40)
+	tabs.add_child(mouse_tab)
+
+	var crosshair_tab := Button.new()
+	crosshair_tab.text = "Приціл"
+	crosshair_tab.toggle_mode = true
+	crosshair_tab.button_group = tab_group
+	crosshair_tab.custom_minimum_size = Vector2(180, 40)
+	tabs.add_child(crosshair_tab)
+
+	# --- Вкладка 1: Миша ---
+	var mouse_page := VBoxContainer.new()
+	mouse_page.add_theme_constant_override("separation", 14)
+	vbox.add_child(mouse_page)
+
+	_sensitivity_slider = _add_mouse_slider_row(mouse_page, "Чутливість миші", 0.1, 5.0, 0.05, SETTINGS_SCRIPT.sensitivity)
+	_scope_slider = _add_mouse_slider_row(mouse_page, "Множник у прицілі", 0.1, 3.0, 0.05, SETTINGS_SCRIPT.scope_sensitivity_multiplier)
+
+	var note := Label.new()
+	note.text = "Множник прицілу додатково застосовується під час зуму снайперської гвинтівки."
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mouse_page.add_child(note)
+
+	# --- Вкладка 2: Приціл ---
+	var crosshair_page := VBoxContainer.new()
+	crosshair_page.add_theme_constant_override("separation", 12)
+	crosshair_page.visible = false
+	vbox.add_child(crosshair_page)
+
 	# Прев'ю на тлі, схожому на гру.
 	var bg := ColorRect.new()
 	bg.color = Color(0.35, 0.42, 0.5)
-	bg.custom_minimum_size = Vector2(0, 150)
-	vbox.add_child(bg)
+	bg.custom_minimum_size = Vector2(0, 140)
+	crosshair_page.add_child(bg)
 	var preview := Control.new()
 	preview.set_script(CROSSHAIR_SCRIPT)
 	preview.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.add_child(preview)
 
 	var sliders: Array = []   # [слайдер, геттер] — щоб оновити після "Скинути"
-	sliders.append([_add_slider_row(vbox, "Довжина", 1.0, 30.0, 1.0, CrosshairConfig.length, func(v): CrosshairConfig.length = v), func(): return CrosshairConfig.length])
-	sliders.append([_add_slider_row(vbox, "Товщина", 1.0, 8.0, 1.0, CrosshairConfig.thickness, func(v): CrosshairConfig.thickness = v), func(): return CrosshairConfig.thickness])
-	sliders.append([_add_slider_row(vbox, "Проміжок", 0.0, 25.0, 1.0, CrosshairConfig.gap, func(v): CrosshairConfig.gap = v), func(): return CrosshairConfig.gap])
-	sliders.append([_add_slider_row(vbox, "Розмір крапки", 1.0, 10.0, 1.0, CrosshairConfig.dot_size, func(v): CrosshairConfig.dot_size = v), func(): return CrosshairConfig.dot_size])
-	sliders.append([_add_slider_row(vbox, "Прозорість", 0.1, 1.0, 0.05, CrosshairConfig.opacity, func(v): CrosshairConfig.opacity = v), func(): return CrosshairConfig.opacity])
+	sliders.append([_add_slider_row(crosshair_page, "Довжина", 1.0, 30.0, 1.0, CrosshairConfig.length, func(v): CrosshairConfig.length = v), func(): return CrosshairConfig.length])
+	sliders.append([_add_slider_row(crosshair_page, "Товщина", 1.0, 8.0, 1.0, CrosshairConfig.thickness, func(v): CrosshairConfig.thickness = v), func(): return CrosshairConfig.thickness])
+	sliders.append([_add_slider_row(crosshair_page, "Проміжок", 0.0, 25.0, 1.0, CrosshairConfig.gap, func(v): CrosshairConfig.gap = v), func(): return CrosshairConfig.gap])
+	sliders.append([_add_slider_row(crosshair_page, "Розмір крапки", 1.0, 10.0, 1.0, CrosshairConfig.dot_size, func(v): CrosshairConfig.dot_size = v), func(): return CrosshairConfig.dot_size])
+	sliders.append([_add_slider_row(crosshair_page, "Прозорість", 0.1, 1.0, 0.05, CrosshairConfig.opacity, func(v): CrosshairConfig.opacity = v), func(): return CrosshairConfig.opacity])
 
 	var checks := HBoxContainer.new()
 	checks.add_theme_constant_override("separation", 24)
-	vbox.add_child(checks)
+	crosshair_page.add_child(checks)
 	var dot_check := CheckBox.new()
 	dot_check.text = "Крапка в центрі"
 	dot_check.button_pressed = CrosshairConfig.dot
@@ -168,7 +234,7 @@ func _make_crosshair_ui() -> void:
 
 	var color_row := HBoxContainer.new()
 	color_row.add_theme_constant_override("separation", 12)
-	vbox.add_child(color_row)
+	crosshair_page.add_child(color_row)
 	var color_label := Label.new()
 	color_label.text = "Колір"
 	color_label.custom_minimum_size = Vector2(160, 0)
@@ -180,6 +246,13 @@ func _make_crosshair_ui() -> void:
 	picker.color_changed.connect(func(c: Color): CrosshairConfig.color = c; CrosshairConfig.version += 1)
 	color_row.add_child(picker)
 
+	mouse_tab.pressed.connect(func():
+		mouse_page.visible = true
+		crosshair_page.visible = false)
+	crosshair_tab.pressed.connect(func():
+		mouse_page.visible = false
+		crosshair_page.visible = true)
+
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 16)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -188,6 +261,8 @@ func _make_crosshair_ui() -> void:
 	reset_btn.text = "Скинути"
 	reset_btn.custom_minimum_size = Vector2(140, 44)
 	reset_btn.pressed.connect(func():
+		_sensitivity_slider.value = SETTINGS_SCRIPT.DEFAULT_SENSITIVITY
+		_scope_slider.value = SETTINGS_SCRIPT.DEFAULT_SCOPE_MULTIPLIER
 		CrosshairConfig.reset_defaults()
 		for pair in sliders:
 			(pair[0] as HSlider).set_value_no_signal(float(pair[1].call()))
@@ -200,9 +275,40 @@ func _make_crosshair_ui() -> void:
 	done_btn.text = "Готово"
 	done_btn.custom_minimum_size = Vector2(140, 44)
 	done_btn.pressed.connect(func():
+		SETTINGS_SCRIPT.sensitivity = _sensitivity_slider.value
+		SETTINGS_SCRIPT.scope_sensitivity_multiplier = _scope_slider.value
+		SETTINGS_SCRIPT.save_settings()
 		CrosshairConfig.save_config()
-		_crosshair_layer.visible = false)
+		_settings_layer.visible = false)
 	buttons.add_child(done_btn)
+
+
+func _add_mouse_slider_row(parent: Control, title: String, min_v: float, max_v: float, step_v: float, value: float) -> HSlider:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	parent.add_child(row)
+
+	var label := Label.new()
+	label.text = title
+	label.custom_minimum_size = Vector2(180, 0)
+	row.add_child(label)
+
+	var slider := HSlider.new()
+	slider.min_value = min_v
+	slider.max_value = max_v
+	slider.step = step_v
+	slider.value = value
+	slider.custom_minimum_size = Vector2(260, 24)
+	slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(slider)
+
+	var value_label := Label.new()
+	value_label.custom_minimum_size = Vector2(60, 0)
+	value_label.text = "%.2f×" % slider.value
+	row.add_child(value_label)
+
+	slider.value_changed.connect(func(v: float): value_label.text = "%.2f×" % v)
+	return slider
 
 
 func _add_slider_row(parent: Control, title: String, min_v: float, max_v: float, step_v: float, value: float, on_change: Callable) -> HSlider:

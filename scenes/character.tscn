@@ -141,7 +141,7 @@ tracks/2/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(-0.54529285, 1.6501694, 0.31167412)]
+"values": [Vector3(-0.54529274, 2.1291904, 1.190876)]
 }
 tracks/3/type = "value"
 tracks/3/imported = false
@@ -699,6 +699,30 @@ tracks/3/keys = {
 "update": 0,
 "values": [Vector3(0, -2.1537364, -0.008726646)]
 }
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.58469296, 1.224, 0.06400013)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(2.3738444e-08, 0.6492625, -2.9802326e-08)]
+}
 
 [sub_resource type="Animation" id="Animation_7eonc"]
 resource_name = "view"
@@ -750,6 +774,30 @@ tracks/3/keys = {
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1),
 "update": 0,
 "values": [Vector3(0, -2.1537364, -0.008726646), Vector3(0.13498192, -2.3812525, -0.12171202), Vector3(0.116575085, -2.3502274, -0.10630476), Vector3(0.116575085, -2.3502274, -0.10630476), Vector3(0, -2.1537364, -0.008726646)]
+}
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.58469296, 1.224, 0.06400013)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(2.3738444e-08, 0.6492625, -2.9802326e-08)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_50cep"]
@@ -808,6 +856,30 @@ tracks/3/keys = {
 "update": 0,
 "values": [Vector3(-0.6254597, 1.224, 0.06400013)]
 }
+tracks/4/type = "value"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_L:position")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(0.58469296, 1.224, 0.06400013)]
+}
+tracks/5/type = "value"
+tracks/5/imported = false
+tracks/5/enabled = true
+tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_L:rotation")
+tracks/5/interp = 1
+tracks/5/loop_wrap = true
+tracks/5/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Vector3(2.3738444e-08, 0.6492625, -2.9802326e-08)]
+}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_butterfly"]
 _data = {
@@ -843,6 +915,9 @@ properties/1/replication_mode = 1
 properties/2/path = NodePath("head:rotation")
 properties/2/spawn = true
 properties/2/replication_mode = 1
+properties/3/path = NodePath(".:crouching")
+properties/3/spawn = true
+properties/3/replication_mode = 1
 
 [sub_resource type="Animation" id="Animation_cicko"]
 length = 0.001
@@ -988,10 +1063,15 @@ libraries/ = SubResource("AnimationLibrary_50cep")
 
 [node name="bolisong" parent="head/Camera3D" unique_id=1300598417 instance=ExtResource("8_0dpix")]
 transform = Transform3D(-0.045369044, -0.08903626, -0.0037682964, 0.088186145, -0.04424634, -0.016293067, 0.012839392, -0.010715125, 0.09859181, 0.32634163, -0.47831622, -0.956089)
-visible = false
 
 [node name="TITAN_Hand" parent="head/Camera3D/bolisong/Node/Node_2" parent_id_path=PackedInt32Array(1300598417, 1446764354) index="0" unique_id=1723182737]
-transform = Transform3D(0.5659843, 0.17794925, 0.80498177, -0.65061486, 0.6960929, 0.3035703, -0.506322, -0.6955492, 0.50975406, 0.0016000001, -0.0032000002, 0.001)
+transform = Transform3D(0.56598425, 0.17794923, 0.8049817, -0.6506148, 0.69609284, 0.3035703, -0.50632197, -0.69554913, 0.50975406, 0.0016000001, -0.0032000002, 0.001)
+
+[node name="Handle_A" parent="head/Camera3D/bolisong/Node/Node_2/TITAN_Hand/TITAN_Knife" parent_id_path=PackedInt32Array(1300598417, 258104650) index="1" unique_id=757094612]
+transform = Transform3D(1, -2.4492937e-16, 0, 2.4492937e-16, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Blade" parent="head/Camera3D/bolisong/Node/Node_2/TITAN_Hand/TITAN_Knife" parent_id_path=PackedInt32Array(1300598417, 258104650) index="2" unique_id=1207332540]
+transform = Transform3D(-0.86, -7.5183586e-08, 0, 7.5183586e-08, -0.86, 0, 0, 0, 0.86, 0, 0, 0)
 
 [node name="AnimationPlayer" parent="head/Camera3D/bolisong" index="1" unique_id=898344688]
 speed_scale = 1.585
@@ -1001,13 +1081,14 @@ transform = Transform3D(-0.026938478, -1.6675733, -1.1038437, 1.7323383, -0.5710
 visible = false
 
 [node name="Knife_Root" parent="head/Camera3D/butterfly" index="0" unique_id=846286799]
-transform = Transform3D(0.99999994, 0, 0, 0, 0.9999998, 0, 0, 0, 0.9999999, 0, 0, 0)
+transform = Transform3D(0.99999964, 0.00064042216, -0.00042694554, -0.0006404215, 0.99999964, 1.7283033e-06, 0.0004269466, -1.4548776e-06, 0.99999976, -2.2071132e-05, -6.0869006e-05, 2.3482195e-05)
 
 [node name="AnimationPlayer" parent="head/Camera3D/butterfly" index="1" unique_id=737131678]
 libraries/ = SubResource("AnimationLibrary_butterfly")
 
 [node name="awp" parent="head/Camera3D" unique_id=798761012 instance=ExtResource("17_cicko")]
 transform = Transform3D(-0.08715576, 0, 0.99619466, 0, 1, 0, -0.99619466, 0, -0.08715576, 0.40776157, -0.42022526, -0.8260784)
+visible = false
 
 [node name="arms" parent="head" unique_id=1530418382 instance=ExtResource("11_7eonc")]
 transform = Transform3D(-0.9999997, 0, -1.5099577e-07, 0, 1.0000002, 0, 1.5099576e-07, 0, -0.9999998, 0.002527237, -0.7992314, -0.7600765)

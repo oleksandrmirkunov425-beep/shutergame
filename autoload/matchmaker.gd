@@ -67,6 +67,24 @@ func rpc_room(node: Node, method: StringName, args: Array = [],
 		node.callv("rpc_id", [id, method] + args)
 
 
+
+# Запуск локального матчу проти AI без підключення до онлайн-сервера.
+func start_bot_match() -> void:
+	Network.leave_game()
+	multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
+	for child in rooms_root.get_children():
+		child.queue_free()
+	var old_scene := get_tree().current_scene
+	var room: Node = load(GAME_SCENE).instantiate()
+	room.name = "bot_room"
+	room.set_meta("peer_ids", [1])
+	room.set_meta("bot_match", true)
+	get_tree().root.add_child(room)
+	if old_scene and old_scene != room:
+		old_scene.queue_free()
+	get_tree().current_scene = room
+	room.get_node("MAP/world").call_deferred("begin_match")
+
 # ------------------------------------------------------------------
 # КЛІЄНТ: пошук гри
 # ------------------------------------------------------------------
@@ -110,6 +128,9 @@ func leave_room() -> void:
 func leave_to_menu() -> void:
 	for c in rooms_root.get_children():
 		c.queue_free()
+	var current := get_tree().current_scene
+	if current and bool(current.get_meta("bot_match", false)):
+		current.queue_free()
 	Network.leave_game.call_deferred()
 	get_tree().change_scene_to_file(MENU_SCENE)
 

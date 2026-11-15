@@ -18,7 +18,9 @@ extends CharacterBody3D
 @export_category("Jump & Crouch Settings")
 @export var jump_buffer_time: float = 0.12
 @export var coyote_time: float = 0.08
-@export var crouch_head_offset: float = 0.38
+@export var crouch_head_offset: float = 0.6   # = stand_height - crouch_height
+@export var stand_height: float = 2.0          # висота капсули стоячи (перезаписується з капсули в _ready)
+@export var crouch_height: float = 1.4         # висота капсули в присіді
 @export var crouch_lerp_speed: float = 14.0
 @export var reset_speed_on_jump: bool = false
 @export var jump_speed_penalty: float = 1.0
@@ -83,6 +85,17 @@ var _jump_buffer_timer: float = 0.0
 var _coyote_timer: float = 0.0
 var _head_base_y: float = 0.607
 
+# ---- Присідання ----
+# crouching реплікується через MultiplayerSynchronizer (див. character.tscn),
+# тому інші гравці теж бачать присід (колізія, модель, хітбокси).
+var crouching: bool = false:
+	set(value):
+		crouching = value
+		if _capsule != null:
+			_apply_capsule()
+var _capsule: CapsuleShape3D
+var _crouch_k: float = 1.0   # поточний візуальний масштаб по висоті (1 = стоїть)
+
 
 func _enter_tree() -> void:
 	set_multiplayer_authority(str(name).to_int())
@@ -99,6 +112,12 @@ func _ready() -> void:
 	_death = PlayerDeath.new(self, death_anim, death_cam)
 	Hitbox.build_for(self)   # хітбокси голови/тулуба/рук/ніг (на кожній копії гравця)
 	gravity = custom_gravity
+	# Ресурс форми спільний для всіх інстансів сцени -> робимо власну копію,
+	# інакше всі гравці присідали б одночасно.
+	_capsule = collision_shape.shape.duplicate() as CapsuleShape3D
+	collision_shape.shape = _capsule
+	stand_height = _capsule.height
+	_apply_capsule()
 	_head_base_y = head.position.y
 	health = max_health
 	_original_collision_layer = collision_layer
@@ -124,15 +143,17 @@ func _ready() -> void:
 	# траплялись помилки "Node not found", коли пакет ще не встиг дійти
 	# і репліка ноди фізично не існувала на клієнті-отримувачі.
 	# Синхронізація позиції — лише гравцям цієї кімнати.
-	var sync := get_node_or_null("MultiplayerSynchronizer") as MultiplayerSynchronizer
-	if sync:
-		sync.public_visibility = false
-		for id in Matchmaker.targets(self):
-			sync.set_visibility_for(id, true)
-
+	# Бот — локальна офлайн-нода, тому їй не потрібні мережевий synchronizer/RPC ready handshake.
 	var world := _get_world()
-	if world and world.has_method("_on_player_node_ready_rpc"):
-		world._on_player_node_ready_rpc.rpc_id(1, name.to_int())
+	var local_bot_match := world != null and bool(world.get("bot_match"))
+	if not bool(get_meta("is_bot", false)) and not local_bot_match:
+		var sync := get_node_or_null("MultiplayerSynchronizer") as MultiplayerSynchronizer
+		if sync:
+			sync.public_visibility = false
+			for id in Matchmaker.targets(self):
+				sync.set_visibility_for(id, true)
+		if world and world.has_method("_on_player_node_ready_rpc"):
+			world._on_player_node_ready_rpc.rpc_id(1, name.to_int())
 
 	if not is_multiplayer_authority():
 		set_process_unhandled_input(false)
@@ -188,7 +209,7 @@ func _physics_process(delta: float) -> void:
 	var input_dir := Input.get_vector("a", "d", "w", "s")
 	var wish_dir := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	var is_crouching := Input.is_key_pressed(KEY_CTRL)
+	var is_crouching := _update_crouch(Input.is_key_pressed(KEY_CTRL))
 	var is_walking := Input.is_key_pressed(KEY_SHIFT) and not is_crouching
 
 	var target_head_y := _head_base_y - (crouch_head_offset if is_crouching else 0.0)
@@ -243,6 +264,52 @@ func _physics_process(delta: float) -> void:
 
 	clamp_max_velocity()
 	move_and_slide()
+
+
+# ---- Присідання ----
+
+# Повертає true, якщо гравець зараз у присіді. Встати можна лише коли над головою є місце.
+func _update_crouch(want_crouch: bool) -> bool:
+	if want_crouch and not crouching:
+		crouching = true
+	elif not want_crouch and crouching:
+		var diff := stand_height - crouch_height
+		if not test_move(global_transform, Vector3.UP * diff):
+			crouching = false
+	return crouching
+
+
+# Міняє висоту капсули; ноги лишаються на землі (капсулу зсуваємо вниз).
+func _apply_capsule() -> void:
+	_capsule.height = crouch_height if crouching else stand_height
+	collision_shape.position.y = -(stand_height - _capsule.height) * 0.5
+
+
+# Плавно підганяє модель і хітбокси під присід (працює на кожній копії гравця).
+func _process(delta: float) -> void:
+	if is_dead:
+		return
+	var target := (crouch_height / stand_height) if crouching else 1.0
+	if is_equal_approx(_crouch_k, target):
+		return
+	_crouch_k = lerpf(_crouch_k, target, clampf(crouch_lerp_speed * delta, 0.0, 1.0))
+	if absf(_crouch_k - target) < 0.002:
+		_crouch_k = target
+	_apply_crouch_visuals(_crouch_k)
+
+
+# Стискає по висоті моделі команд і хітбокси відносно ніг.
+func _apply_crouch_visuals(k: float) -> void:
+	var feet_y := -stand_height * 0.5
+	for m in [model_ct, model_t]:
+		if m == null:
+			continue
+		if not m.has_meta("base_xf"):
+			m.set_meta("base_xf", m.transform)
+		var base: Transform3D = m.get_meta("base_xf")
+		var squash := Transform3D(Basis.from_scale(Vector3(1.0, k, 1.0)), Vector3(0.0, feet_y * (1.0 - k), 0.0))
+		m.transform = squash * base
+	Hitbox.set_crouch(self, k, feet_y)
 
 
 # Фізика "трупа": падає під гравітацією, гальмується тертям по горизонталі
@@ -313,7 +380,9 @@ func clamp_max_velocity() -> void:
 func take_damage(amount: float, attacker_id: int = -1) -> void:
 	if is_dead:
 		return
-	if is_multiplayer_authority():
+	if bool(get_meta("is_bot", false)):
+		_apply_damage(amount, attacker_id)
+	elif is_multiplayer_authority():
 		_apply_damage(amount, attacker_id)
 	else:
 		_apply_damage_rpc.rpc_id(get_multiplayer_authority(), amount, attacker_id)
@@ -358,7 +427,7 @@ func _die() -> void:
 	if is_multiplayer_authority() and health_label:
 		health_label.text = "Ви загинули..."
 
-	if is_multiplayer_authority():
+	if is_multiplayer_authority() or bool(get_meta("is_bot", false)):
 		var world := _get_world()
 		if world:
 			if multiplayer.is_server():
@@ -372,6 +441,11 @@ func _die() -> void:
 @rpc("authority", "call_local", "reliable")
 func _set_dead_state(value: bool) -> void:
 	is_dead = value
+	if value:
+		# Перед анімацією смерті повертаємо стоячу позу моделі/хітбоксів.
+		crouching = false
+		_crouch_k = 1.0
+		_apply_crouch_visuals(1.0)
 	Hitbox.set_enabled(self, not value)   # труп не ловить кулі (на всіх клієнтах)
 	if value and _death:
 		_death.play()   # анімація смерті + камера (на всіх клієнтах)
@@ -394,6 +468,9 @@ func _revive() -> void:
 		_death.reset()
 
 	Hitbox.set_enabled(self, true)
+	crouching = false
+	_crouch_k = 1.0
+	_apply_crouch_visuals(1.0)
 	# Повертаємо оригінальні шари зіткнення
 	collision_layer = _original_collision_layer
 	collision_mask = _original_collision_mask
@@ -418,7 +495,9 @@ func _apply_team_visual() -> void:
 	var is_local := is_multiplayer_authority()
 	# Хітбокси підганяємо під модель команди (форма береться з вершин меша).
 	if team == Team.CT or team == Team.T:
+		_apply_crouch_visuals(1.0)   # хітбокси підганяємо під модель у стоячій позі
 		Hitbox.fit_to_model(self, model_ct if team == Team.CT else model_t)
+		_apply_crouch_visuals(_crouch_k)
 	if model_ct:
 		model_ct.visible = (team == Team.CT) and not is_local
 	if model_t:
@@ -444,16 +523,38 @@ func _apply_arms_skin() -> void:
 		_mat_glow.emission_energy_multiplier = 1.4
 
 	var src: Node = (ARMS_SCENE_CT if team == Team.CT else ARMS_SCENE_T).instantiate()
+	# Імпортовані GLB можуть мати дублікати arm_L/arm_R у скелеті та візуальному меші.
+	# Беремо перший вузол саме з MeshInstance3D і не затираємо вже робочий меш, якщо
+	# у конкретному командному GLB частина назв відрізняється.
 	for part in ARM_PARTS:
-		var from := src.find_child(part, true, false) as MeshInstance3D
-		var to := arms_node.find_child(part, true, false) as MeshInstance3D
-		if from == null or to == null:
+		var from := _find_mesh_part(src, part)
+		var to := _find_mesh_part(arms_node, part)
+		if to == null:
 			continue
-		to.mesh = from.mesh
-		for i in to.mesh.get_surface_count():
-			# поверхня 1 є лише в CT-рук (світна смужка)
-			to.set_surface_override_material(i, _mat_glow if i == 1 else _mat_voxel)
+		if from != null and from.mesh != null:
+			to.mesh = from.mesh
+		if to.mesh != null:
+			to.visible = true
+			for i in to.mesh.get_surface_count():
+				to.set_surface_override_material(i, _mat_glow if i == 1 else _mat_voxel)
 	src.free()
+	# У деяких імпортованих варіантах root/група лівої руки має власний visible=false.
+	for side_name in ["arm_L", "arm_R", "hand_L", "hand_R"]:
+		var side := arms_node.find_child(side_name, true, false)
+		if side:
+			side.visible = true
+
+func _find_mesh_part(root: Node, part_name: String) -> MeshInstance3D:
+	if root == null:
+		return null
+	var pending: Array[Node] = [root]
+	while not pending.is_empty():
+		var current: Node = pending.pop_front()
+		if current.name == part_name and current is MeshInstance3D:
+			return current as MeshInstance3D
+		for child in current.get_children():
+			pending.append(child)
+	return null
 
 
 @rpc("any_peer", "call_local", "reliable")

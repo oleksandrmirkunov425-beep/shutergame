@@ -164,6 +164,7 @@ var _base_mouse_sens: float = -1.0
 var _scope_layer: CanvasLayer = null
 var _crosshair_hidden_by_scope: bool = false
 var _arms_hidden_by_sniper: bool = false
+var _arms_default_poses: Array = []
 
 # Основна зброя (слот 1): що саме обрано в меню на E. Ніж — слот 3.
 var primary_weapon: Weapon = Weapon.AK47
@@ -242,6 +243,8 @@ func _ready() -> void:
 			player_body = node
 			break
 		node = node.get_parent()
+
+	_capture_arms_default_poses()
 
 	if not _has_authority():
 		set_process(false)
@@ -431,6 +434,8 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 	if weapon == Weapon.AK47:
 		if knife_anim:
 			knife_anim.stop()
+		if knife_attack_anim:
+			knife_attack_anim.stop()
 		if bolisong_anim:
 			bolisong_anim.stop()
 			_restore_pose_base(_bolisong_pose_base)
@@ -489,8 +494,13 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 	elif weapon == Weapon.SNIPER:
 		if ak47_anim:
 			ak47_anim.stop()
+		if ak47_reload_anim:
+			ak47_reload_anim.stop()
 		if knife_anim:
 			knife_anim.stop()
+		if knife_attack_anim:
+			knife_attack_anim.stop()
+		_restore_arms_default_poses()
 		if bolisong_anim:
 			bolisong_anim.stop()
 			_restore_pose_base(_bolisong_pose_base)
@@ -618,8 +628,13 @@ func shoot() -> void:
 	var direction: Vector3 = _get_spread_direction()
 	var spawn_pos: Vector3 = global_transform.origin
 
-	# Спавнимо кулю на ВСІХ клієнтах через RPC (включно з тим, хто стріляв)
-	Matchmaker.rpc_room(self, "_spawn_bullet_rpc", [spawn_pos, direction, multiplayer.get_unique_id(), -1.0, -1.0], false)
+	# У локальному матчі RPC-одержувачів немає: обробляємо постріл тут же.
+	var room := Matchmaker.room_of(self)
+	if room and bool(room.get_meta("bot_match", false)):
+		_spawn_bullet_rpc(spawn_pos, direction, multiplayer.get_unique_id())
+	else:
+		# Онлайн: розсилаємо постріл іншим гравцям кімнати.
+		Matchmaker.rpc_room(self, "_spawn_bullet_rpc", [spawn_pos, direction, multiplayer.get_unique_id(), -1.0, -1.0], false)
 
 	_apply_recoil()
 
@@ -639,15 +654,98 @@ func shoot() -> void:
 @rpc("call_local", "any_peer", "reliable")
 func _spawn_bullet_rpc(spawn_pos: Vector3, direction: Vector3, shooter_id: int, damage_override: float = -1.0, speed_override: float = -1.0) -> void:
 	# Хітскан: постріл — миттєвий промінь, без об'єкта кулі.
+	var is_sniper: bool = speed_override > 0.0
 	var damage: float = damage_override if damage_override > 0.0 else ak_damage
 	_fire_hitscan(spawn_pos, direction, shooter_id, damage)
 
+	# Трейсер кулі (як у CS2): короткий жовто-білий слід, що летить до цілі.
+	_spawn_bullet_tracer(spawn_pos, direction, is_sniper)
+
 	# Спалах показується на кожному клієнті в точці дула.
 	# speed_override > 0 використовується для AWP; звичайний постріл — AK/інша зброя.
-	_play_weapon_muzzle_flash(speed_override > 0.0)
+	_play_weapon_muzzle_flash(is_sniper)
 
 	# Звук чути на всіх клієнтах — у точці дула (суперник чує з відстані).
-	_play_shot_sound(spawn_pos, speed_override > 0.0)
+	_play_shot_sound(spawn_pos, is_sniper)
+
+
+func _spawn_bullet_tracer(spawn_pos: Vector3, direction: Vector3, is_sniper: bool) -> void:
+	var dir: Vector3 = direction.normalized()
+	if dir.length() < 0.001:
+		dir = -global_transform.basis.z
+
+	var end_pos: Vector3 = _get_tracer_end_point(spawn_pos, dir)
+	var start_pos: Vector3 = spawn_pos + dir * 0.55
+	var muzzle_node: Node3D = sniper_muzzle if is_sniper else muzzle
+	if _has_authority() and sniper_scope_level == 0 and is_instance_valid(muzzle_node):
+		start_pos = muzzle_node.global_position
+
+	var dist: float = start_pos.distance_to(end_pos)
+	if dist < 0.15:
+		return
+
+	var parent_node: Node = Matchmaker.room_of(self)
+	if parent_node == null:
+		parent_node = get_tree().current_scene
+	if parent_node == null:
+		return
+
+	var streak_len: float = minf(dist, 7.5 if is_sniper else 4.5)
+	var thickness: float = 0.02 if is_sniper else 0.012
+	var tracer := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = Vector3(thickness, thickness, streak_len)
+	tracer.mesh = mesh
+	tracer.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.albedo_color = Color(1.0, 0.90, 0.60, 0.92)
+	mat.emission_enabled = true
+	mat.emission = Color(1.0, 0.80, 0.40)
+	mat.emission_energy_multiplier = 2.2
+	tracer.material_override = mat
+
+	parent_node.add_child(tracer)
+	var travel_dir: Vector3 = (end_pos - start_pos).normalized()
+	var fly_from: Vector3 = start_pos + travel_dir * (streak_len * 0.5)
+	var fly_to: Vector3 = end_pos - travel_dir * (streak_len * 0.5)
+	tracer.global_position = fly_from
+	var up_vec: Vector3 = Vector3.RIGHT if absf(travel_dir.dot(Vector3.UP)) > 0.99 else Vector3.UP
+	tracer.look_at(end_pos, up_vec)
+
+	var speed: float = 420.0 if is_sniper else 260.0
+	var fly_time: float = clampf(dist / speed, 0.025, 0.14)
+	var tw := tracer.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(tracer, "global_position", fly_to, fly_time)
+	tw.tween_property(mat, "albedo_color:a", 0.0, fly_time).set_delay(fly_time * 0.4)
+	tw.chain().tween_callback(tracer.queue_free)
+
+
+func _get_tracer_end_point(from: Vector3, dir: Vector3) -> Vector3:
+	var max_dist: float = maxf(max_shoot_distance, 1000.0)
+	var query := PhysicsRayQueryParameters3D.create(from, from + dir * max_dist)
+	query.collide_with_bodies = true
+	query.collide_with_areas = false
+	var ex: Array[RID] = _hitscan_exclude()
+	query.exclude = ex
+
+	var space_state := get_world_3d().direct_space_state
+	var result := space_state.intersect_ray(query)
+	var guard: int = 0
+	while result and not (result.get("collider") is Hitbox) \
+			and result.get("collider") is CharacterBody3D \
+			and (result.get("collider") as Node).has_method("take_damage") and guard < 8:
+		ex.append((result.get("collider") as CollisionObject3D).get_rid())
+		query.exclude = ex
+		result = space_state.intersect_ray(query)
+		guard += 1
+
+	if result:
+		return result.get("position")
+	return from + dir * max_dist
 
 
 # Повертає/створює Sprite3D зі спалахом на кінці ствола.
@@ -1252,20 +1350,51 @@ func _enforce_held_only() -> void:
 		_sniper_muzzle_flash.visible = false
 
 
-# У снайперки немає власної анімації рук — на час її використання ховаємо спільні руки.
+# Руки завжди видимі для всіх видів зброї (ховаються лише під час зуму в приціл снайперки).
 func _update_arms_visibility(is_sniper: bool) -> void:
 	if player_body == null:
 		return
 	var arms := player_body.get_node_or_null("head/arms") as Node3D
 	if arms == null:
 		return
-	if is_sniper:
-		if arms.visible:
-			arms.visible = false
-			_arms_hidden_by_sniper = true
-	elif _arms_hidden_by_sniper:
+
+	if is_sniper and sniper_scope_level > 0:
+		arms.visible = false
+		_arms_hidden_by_sniper = true
+	else:
 		arms.visible = true
+		_set_arms_descendants_visible(arms)
 		_arms_hidden_by_sniper = false
+
+
+func _capture_arms_default_poses() -> void:
+	_arms_default_poses.clear()
+	if player_body == null:
+		return
+	var arms := player_body.get_node_or_null("head/arms") as Node3D
+	if arms == null:
+		return
+	for part_name in ["arm_L", "arm_R", "hand_L", "hand_R"]:
+		var n := arms.find_child(part_name, true, false) as Node3D
+		if n:
+			_arms_default_poses.append([n, n.position, n.rotation])
+
+
+func _restore_arms_default_poses() -> void:
+	for entry in _arms_default_poses:
+		var n: Node3D = entry[0]
+		if is_instance_valid(n):
+			n.position = entry[1]
+			n.rotation = entry[2]
+
+
+func _set_arms_descendants_visible(node: Node) -> void:
+	# Відновлюємо видимість усіх 3D-вузлів усередині моделі рук.
+	# Викликається перед малюванням кадру через _enforce_held_only().
+	for child in node.get_children():
+		if child is Node3D:
+			(child as Node3D).visible = true
+		_set_arms_descendants_visible(child)
 
 
 # AnimationPlayer всередині імпортованої моделі (glb/fbx).

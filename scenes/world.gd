@@ -17,11 +17,14 @@ enum State { WAITING, COUNTDOWN, PLAYING, ROUND_END, GAME_OVER, FREEZE }
 # Команди (значення мають збігатися з Player.Team у player.gd)
 const TEAM_CT := 0
 const TEAM_T := 1
+const BOT_ID := 2
+const BOT_AI_SCRIPT := preload("res://scenes/bot_ai.gd")
 var teams: Dictionary = {}  # player_id:int -> TEAM_CT / TEAM_T
 
 var room: Node                 # корінь кімнати (main)
 var room_id: int = -1
-var room_peers: Array = []     # peer_id гравців ЦІЄЇ кімнати
+var room_peers: Array = []     # реальні peer_id цієї кімнати (бот не є мережевим peer)
+var bot_match: bool = false
 var _match_begun: bool = false
 
 var spawn_points: Array[Node3D] = []
@@ -57,6 +60,7 @@ func _ready() -> void:
 	room = get_node("../..")
 	room_id = room.name.to_int()
 	room_peers = room.get_meta("peer_ids", [])
+	bot_match = bool(room.get_meta("bot_match", false))
 	players_node = room.get_node("players")
 
 	for child in room.get_node("SpawnPoints").get_children():
@@ -90,10 +94,11 @@ func _ready() -> void:
 	_game_over_timer.timeout.connect(_on_game_over_timeout)
 
 	# Клієнт: малюємо табло з ніками і надсилаємо серверу свій нік.
-	if not multiplayer.is_server():
+	if not multiplayer.is_server() or bot_match:
 		_make_scoreboard()
-		var my_nick: String = str(Engine.get_meta("player_nick", "Player"))
-		_submit_nick.rpc_id(1, my_nick)
+		if not bot_match:
+			var my_nick: String = str(Engine.get_meta("player_nick", "Player"))
+			_submit_nick.rpc_id(1, my_nick)
 
 	# Клієнт: сцена кімнати готова — повідомляємо сервер. Коли готові обидва,
 	# сервер викликає begin_match() (так жоден RPC не губиться до появи нод).
@@ -107,17 +112,48 @@ func begin_match() -> void:
 		return
 	_match_begun = true
 	_assign_teams()
+	if bot_match:
+		nicks[1] = str(Engine.get_meta("player_nick", "Player"))
 	state = State.WAITING
 	_hud(State.WAITING, 0)
 	for id in room_peers.duplicate():
 		_on_player_connected(id)
+	if bot_match:
+		_spawn_bot()
 	_scores_sync()   # щоб табло з ніками з'явилось ще до старту раунду
 	_check_start_conditions()
 
 
+# Локальний бот живе тільки на серверній/офлайн-копії. Його тіло та хітбокси — ті самі, що в гравця.
+func _spawn_bot() -> void:
+	if players_node.get_node_or_null(str(BOT_ID)):
+		return
+	var spawn_index := 1 if spawn_points.size() > 1 else 0
+	var bot := player_scene.instantiate() as CharacterBody3D
+	bot.name = str(BOT_ID)
+	bot.set_multiplayer_authority(BOT_ID)
+	bot.set_meta("is_bot", true)
+	bot.global_transform = spawn_points[spawn_index].global_transform
+	players_node.add_child(bot, true)
+	bot.call("_set_team", int(teams.get(BOT_ID, TEAM_T)))
+	bot.set_meta("bot_nick", "BOT | TACTICAL")
+	var ai := Node.new()
+	ai.name = "BotAI"
+	ai.set_script(BOT_AI_SCRIPT)
+	bot.add_child(ai)
+	scores[BOT_ID] = 0
+	alive_players[BOT_ID] = true
+	nicks[BOT_ID] = "BOT | TACTICAL"
+	bot.set("frozen", true)
+
 # Тільки сервер: випадково ділимо гравців кімнати на КТ і Т.
 func _assign_teams() -> void:
 	teams.clear()
+	if bot_match:
+		# У локальному матчі команди сталі: гравець — CT, бот — T.
+		teams[1] = TEAM_CT
+		teams[BOT_ID] = TEAM_T
+		return
 	var ids := room_peers.duplicate()
 	ids.shuffle()
 	for i in ids.size():
@@ -126,11 +162,18 @@ func _assign_teams() -> void:
 
 # ---- розсилки тільки гравцям цієї кімнати ----
 func _hud(new_state: int, value: int) -> void:
+	if bot_match:
+		_sync_hud_state(new_state, value)
+		return
 	for id in room_peers:
 		_sync_hud_state.rpc_id(id, new_state, value)
 
 
 func _scores_sync() -> void:
+	if bot_match:
+		_sync_scores(scores)
+		_sync_scoreboard(scores, nicks)
+		return
 	for id in room_peers:
 		_sync_scores.rpc_id(id, scores)
 		_sync_scoreboard.rpc_id(id, scores, nicks)
@@ -180,7 +223,7 @@ func on_peer_left(id: int) -> void:
 
 
 func _check_start_conditions() -> void:
-	if state == State.WAITING and room_peers.size() >= 2:
+	if state == State.WAITING and (room_peers.size() >= 2 or bot_match and room_peers.size() >= 1):
 		_start_countdown()
 
 
@@ -206,6 +249,8 @@ func _begin_round() -> void:
 
 	# Всіх гравців ставимо на спавни...
 	var ids := room_peers.duplicate()
+	if bot_match:
+		ids.append(BOT_ID)
 	for i in ids.size():
 		_spawn_or_respawn_player(ids[i], i)
 		alive_players[ids[i]] = true
@@ -238,6 +283,14 @@ func _on_freeze_tick() -> void:
 
 # Тільки сервер: кажемо власнику кожного гравця, що він (не) може рухатись.
 func _set_frozen_all(value: bool) -> void:
+	if bot_match:
+		var bot := players_node.get_node_or_null(str(BOT_ID))
+		if bot:
+			bot.set("frozen", value)
+		var local_player := players_node.get_node_or_null("1")
+		if local_player:
+			local_player.set("frozen", value)
+		return
 	for id in room_peers:
 		var player := players_node.get_node_or_null(str(id))
 		if is_instance_valid(player) and _ready_peers.get(id, {}).has(id):
@@ -246,14 +299,29 @@ func _set_frozen_all(value: bool) -> void:
 
 func _spawn_or_respawn_player(id: int, spawn_index: int) -> void:
 	var spawn_point: Node3D = spawn_points[spawn_index % spawn_points.size()]
+	if bot_match and id == BOT_ID:
+		var bot_existing := players_node.get_node_or_null(str(BOT_ID))
+		if bot_existing:
+			bot_existing.global_transform = spawn_point.global_transform
+			bot_existing.call("_revive")
+			bot_existing.set("frozen", true)
+		return
 	var existing := players_node.get_node_or_null(str(id))
 
 	_last_spawn_transform[id] = spawn_point.global_transform
 
 	if existing:
 		existing.global_transform = spawn_point.global_transform
-		_broadcast_transform_to_ready_peers(id, existing, spawn_point.global_transform)
-		_broadcast_revive_to_ready_peers(id, existing)
+		if bot_match:
+			# Offline-матч не проходить мережевий ready-handshake, тому
+			# команду локальному гравцю призначаємо безпосередньо тут.
+			if teams.has(id):
+				existing.call("_set_team", int(teams[id]))
+			existing.call("_set_spawn_transform", spawn_point.global_transform)
+			existing.call("_revive")
+		else:
+			_broadcast_transform_to_ready_peers(id, existing, spawn_point.global_transform)
+			_broadcast_revive_to_ready_peers(id, existing)
 		_refill_ammo_for_owner(id, existing)
 	else:
 		var player := player_scene.instantiate()
@@ -262,6 +330,8 @@ func _spawn_or_respawn_player(id: int, spawn_index: int) -> void:
 		player.global_transform = spawn_point.global_transform
 		_ready_peers[id] = {}
 		players_node.add_child(player, true)
+		if bot_match and teams.has(id):
+			player.call("_set_team", int(teams[id]))
 
 		# Замість автоматичної реплікації MultiplayerSpawner (яка НЕ
 		# бекфілить пізніх пірів) — явно розсилаємо всім УЖЕ підключеним
@@ -347,6 +417,11 @@ func _broadcast_revive_to_ready_peers(player_id: int, player: Node) -> void:
 
 
 func _refill_ammo_for_owner(player_id: int, player: Node) -> void:
+	if bot_match:
+		var local_weapon := player.get_node_or_null("head/Camera3D")
+		if local_weapon and local_weapon.has_method("_reset_ammo_rpc"):
+			local_weapon.call("_reset_ammo_rpc")
+		return
 	var ready_set: Dictionary = _ready_peers.get(player_id, {})
 	if not ready_set.has(player_id):
 		return
@@ -396,10 +471,12 @@ func _schedule_warmup_respawn(victim_id: int) -> void:
 
 	if state != State.WAITING and state != State.COUNTDOWN:
 		return
-	if not room_peers.has(victim_id):
+	if not room_peers.has(victim_id) and not (bot_match and victim_id == BOT_ID):
 		return
 
 	var spawn_index: int = room_peers.find(victim_id)
+	if bot_match and victim_id == BOT_ID:
+		spawn_index = 1
 	_spawn_or_respawn_player(victim_id, max(spawn_index, 0))
 	alive_players[victim_id] = true
 
@@ -429,7 +506,10 @@ func _end_game(winner_id: int) -> void:
 
 
 func _on_game_over_timeout() -> void:
-	Matchmaker.close_room(room_id)
+	if bot_match:
+		Matchmaker.leave_to_menu()
+	else:
+		Matchmaker.close_room(room_id)
 
 
 @rpc("call_local", "reliable")
