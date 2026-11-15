@@ -95,6 +95,7 @@ var crouching: bool = false:
 			_apply_capsule()
 var _capsule: CapsuleShape3D
 var _crouch_k: float = 1.0   # поточний візуальний масштаб по висоті (1 = стоїть)
+var _model_base: Dictionary = {}   # стояча поза моделей (запам'ятовується на самому початку _ready)
 
 
 func _enter_tree() -> void:
@@ -102,6 +103,10 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
+	# Запам'ятовуємо стоячу позу моделей ДО будь-яких анімацій/скидань.
+	for m in [model_ct, model_t]:
+		if m != null:
+			_model_base[m] = m.transform
 	# Чужі копії гравця не повинні мати власного HUD: інакше в групах
 	# (score_label, health_label...) з'являються чужі лейбли, і Hud оновлює не ті.
 	if not is_multiplayer_authority():
@@ -304,9 +309,7 @@ func _apply_crouch_visuals(k: float) -> void:
 	for m in [model_ct, model_t]:
 		if m == null:
 			continue
-		if not m.has_meta("base_xf"):
-			m.set_meta("base_xf", m.transform)
-		var base: Transform3D = m.get_meta("base_xf")
+		var base: Transform3D = _model_base.get(m, m.transform)
 		var squash := Transform3D(Basis.from_scale(Vector3(1.0, k, 1.0)), Vector3(0.0, feet_y * (1.0 - k), 0.0))
 		m.transform = squash * base
 	Hitbox.set_crouch(self, k, feet_y)
