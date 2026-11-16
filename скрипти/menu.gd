@@ -11,21 +11,16 @@ const MAX_CONNECT_ATTEMPTS := 20
 const DEFAULT_NICK_PREFIX := "Player"
 
 var nick_input: LineEdit = null
-var bot_button: Button = null
-var balance_label: Label = null
-var knife_label: Label = null
-var ak_label: Label = null
-var awp_label: Label = null
-var _shop_layer: CanvasLayer = null
-var _shop_rows: VBoxContainer = null
-var _shop_balance: Label = null
-var _shop_msg: Label = null
+var _ui: Control = null      # нове головне меню (скрипти/menu_ui.gd)
+var _shop: Control = null    # новий екран магазину (скрипти/shop_ui.gd)
 var _recent_gain: int = 0
 var _bg_attempts: int = 0
 var _bg_timer: Timer = null
 
 const CROSSHAIR_SCRIPT := preload("res://weapons/crosschair.gd")
 const SETTINGS_SCRIPT := preload("res://скрипти/game_settings.gd")
+const MENU_UI_SCRIPT := preload("res://скрипти/menu_ui.gd")
+const SHOP_UI_SCRIPT := preload("res://скрипти/shop_ui.gd")
 
 var _settings_layer: CanvasLayer = null
 var _sensitivity_slider: HSlider = null
@@ -46,17 +41,16 @@ func _ready() -> void:
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	join_button.pressed.connect(_on_cancel_pressed)
+	_hide_legacy_ui()
 	_make_nick_input()
-	_make_bot_button()
 	SETTINGS_SCRIPT.load_settings()
-	_make_knife_ui()
 	_make_settings_ui()
+	_make_new_ui()
 	Network.connection_succeeded.connect(_on_connected)
 	Network.connection_failed.connect(_on_connection_failed)
 
-	_make_balance_label()
 	Economy.profile_updated.connect(_on_profile_updated)
-	Economy.shop_message.connect(func(text: String): _shop_msg.text = text)
+	Economy.shop_message.connect(func(text: String): _shop.set_message(text))
 	_bg_timer = Timer.new()
 	_bg_timer.one_shot = true
 	_bg_timer.timeout.connect(_bg_connect)
@@ -65,36 +59,56 @@ func _ready() -> void:
 	_bg_connect()
 
 
-# ---------- Баланс ----------
-func _make_balance_label() -> void:
-	balance_label = Label.new()
-	balance_label.position = Vector2(1020, 215)
-	balance_label.add_theme_font_size_override("font_size", 28)
-	add_child(balance_label)
-	_refresh_balance()
+# ---------- Нове меню ----------
+# Старі кнопки/написи зі сцени ховаємо (мережева панель лишається в сцені, але не показується:
+# статус пошуку тепер малює оверлей у menu_ui.gd).
+func _hide_legacy_ui() -> void:
+	for c in get_children():
+		if c is Control:
+			(c as Control).hide()
 
 
-func _refresh_balance() -> void:
-	if balance_label == null:
-		return
-	if Economy.view_coins < 0:
-		balance_label.text = "Баланс: ..."
-		return
-	var t := "Баланс: %d" % Economy.view_coins
-	if _recent_gain > 0:
-		t += "  (+%d)" % _recent_gain
-	balance_label.text = t
+func _make_new_ui() -> void:
+	# Усе нове меню живе в CanvasLayer: так воно завжди займає весь екран, навіть якщо корінь сцени
+	# Node2D, а в сцені є Camera2D (для Node2D розмір «батька» нульовий, і Control стискався б у точку).
+	var layer := CanvasLayer.new()
+	layer.layer = 1
+	add_child(layer)
+	_ui = MENU_UI_SCRIPT.new()
+	layer.add_child(_ui)
+	_ui.build(nick_input)
+	_ui.play_pressed.connect(_on_button_pressed)
+	_ui.bot_pressed.connect(_on_bot_button_pressed)
+	_ui.shop_pressed.connect(func(): _shop.open())
+	_ui.settings_pressed.connect(func(): _settings_layer.visible = true)
+	_ui.quit_pressed.connect(_on_button_3_pressed)
+	_ui.cancel_search_pressed.connect(_on_cancel_pressed)
+
+	_shop = SHOP_UI_SCRIPT.new()
+	layer.add_child(_shop)
+	_shop.build()
+	_shop.online_check = func() -> bool: return _online() and Economy.view_coins >= 0
+
+
+func _set_status(text: String) -> void:
+	status_label.text = text
+	if _ui:
+		_ui.set_status(text)
+
+
+func _show_search(on: bool) -> void:
+	if _ui:
+		_ui.show_search(on)
 
 
 func _on_profile_updated() -> void:
 	if Economy.view_last_reward > 0:
 		_recent_gain = Economy.view_last_reward
 		Economy.view_last_reward = 0
-	_refresh_balance()
-	_refresh_knife_label()
-	_refresh_skin_label()
-	if _shop_layer != null and _shop_layer.visible:
-		_refresh_shop()
+	if _ui:
+		_ui.refresh(_recent_gain)
+	if _shop:
+		_shop.refresh()
 
 
 func _online() -> bool:
@@ -115,39 +129,16 @@ func _bg_connect() -> void:
 # Нік: не зберігається на диск (живе лише до закриття гри), тож для тесту
 # на одному ПК у кожному запущеному вікні можна ввести свій.
 func _make_nick_input() -> void:
-	var title := Label.new()
-	title.text = "Нік:"
-	title.position = Vector2(292, 268)
-	title.add_theme_font_size_override("font_size", 28)
-	add_child(title)
-
 	nick_input = LineEdit.new()
-	nick_input.position = Vector2(370, 262)
-	nick_input.size = Vector2(344, 50)
 	nick_input.max_length = 16
 	nick_input.placeholder_text = "Введи нік"
-	nick_input.add_theme_font_size_override("font_size", 26)
 	var current: String = str(Engine.get_meta("player_nick", ""))
 	if current == "":
 		current = "%s%d" % [DEFAULT_NICK_PREFIX, randi_range(100, 999)]
 	nick_input.text = current
 	_store_nick(current)
 	nick_input.text_changed.connect(_store_nick)
-	add_child(nick_input)
 
-
-func _make_bot_button() -> void:
-	# Друга велика кнопка під онлайн-грою. Стару неактивну кнопку магазину ховаємо.
-	var old_shop := get_node_or_null("Button2")
-	if old_shop:
-		old_shop.hide()
-	bot_button = Button.new()
-	bot_button.text = "ГРАТИ ПРОТИ БОТА"
-	bot_button.position = Vector2(292, 450)
-	bot_button.size = Vector2(422, 127)
-	bot_button.add_theme_font_size_override("font_size", 30)
-	bot_button.pressed.connect(_on_bot_button_pressed)
-	add_child(bot_button)
 
 func _on_bot_button_pressed() -> void:
 	if nick_input:
@@ -159,224 +150,9 @@ func _store_nick(text: String) -> void:
 	Engine.set_meta("player_nick", n if n != "" else "Player")
 
 
-# Вибраний ніж + кнопка "Магазин" (вікно, де купуються й вибираються ножі).
-func _make_knife_ui() -> void:
-	knife_label = Label.new()
-	knife_label.position = Vector2(1020, 285)
-	knife_label.add_theme_font_size_override("font_size", 28)
-	add_child(knife_label)
-
-	ak_label = Label.new()
-	ak_label.position = Vector2(1020, 415)
-	ak_label.add_theme_font_size_override("font_size", 28)
-	add_child(ak_label)
-
-	awp_label = Label.new()
-	awp_label.position = Vector2(1020, 455)
-	awp_label.add_theme_font_size_override("font_size", 28)
-	add_child(awp_label)
-
-	var shop_btn := Button.new()
-	shop_btn.text = "Магазин"
-	shop_btn.position = Vector2(1020, 340)
-	shop_btn.size = Vector2(250, 60)
-	shop_btn.add_theme_font_size_override("font_size", 28)
-	shop_btn.pressed.connect(func():
-		_shop_msg.text = ""
-		_refresh_shop()
-		_shop_layer.visible = true)
-	add_child(shop_btn)
-
-	_make_shop_overlay()
-	_refresh_knife_label()
-	_refresh_skin_label()
-
-
-func _make_shop_overlay() -> void:
-	_shop_layer = CanvasLayer.new()
-	_shop_layer.layer = 10
-	_shop_layer.visible = false
-	add_child(_shop_layer)
-
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.65)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_shop_layer.add_child(dim)
-
-	var center := CenterContainer.new()
-	center.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.add_child(center)
-
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(620, 0)
-	center.add_child(panel)
-
-	var margin := MarginContainer.new()
-	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
-	panel.add_child(margin)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 14)
-	margin.add_child(vbox)
-
-	var title := Label.new()
-	title.text = "Магазин"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", 28)
-	vbox.add_child(title)
-
-	_shop_balance = Label.new()
-	_shop_balance.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_shop_balance.add_theme_font_size_override("font_size", 22)
-	vbox.add_child(_shop_balance)
-
-	_shop_rows = VBoxContainer.new()
-	_shop_rows.add_theme_constant_override("separation", 10)
-	vbox.add_child(_shop_rows)
-
-	_shop_msg = Label.new()
-	_shop_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_shop_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_shop_msg.custom_minimum_size = Vector2(0, 28)
-	vbox.add_child(_shop_msg)
-
-	var close_btn := Button.new()
-	close_btn.text = "Закрити"
-	close_btn.custom_minimum_size = Vector2(160, 44)
-	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	close_btn.pressed.connect(func(): _shop_layer.visible = false)
-	vbox.add_child(close_btn)
-
-
-# Перемальовуємо рядки магазину за даними від сервера. Купити/вибрати можна лише при зв'язку з сервером.
-func _refresh_shop() -> void:
-	if _shop_rows == null:
-		return
-	for c in _shop_rows.get_children():
-		c.queue_free()
-	var online := _online() and Economy.view_coins >= 0
-	if Economy.view_coins >= 0:
-		_shop_balance.text = "Баланс: %d" % Economy.view_coins
-	else:
-		_shop_balance.text = "Баланс: ... (чекаємо відповідь сервера)"
-
-	_add_shop_header("Ножі")
-	for id in Economy.KNIFE_ORDER:
-		var info: Dictionary = Economy.KNIVES[id]
-		var owned: bool = Economy.view_owned.has(id)
-
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		_shop_rows.add_child(row)
-
-		var name_l := Label.new()
-		name_l.text = str(info["name"])
-		name_l.custom_minimum_size = Vector2(220, 0)
-		name_l.add_theme_font_size_override("font_size", 24)
-		row.add_child(name_l)
-
-		var price_l := Label.new()
-		price_l.text = "Є у тебе" if owned else "%d коїнів" % int(info["price"])
-		price_l.custom_minimum_size = Vector2(150, 0)
-		price_l.add_theme_font_size_override("font_size", 20)
-		row.add_child(price_l)
-
-		var btn := Button.new()
-		btn.custom_minimum_size = Vector2(160, 44)
-		if Economy.view_equipped == id:
-			btn.text = "Вибрано"
-			btn.disabled = true
-		elif owned:
-			btn.text = "Вибрати"
-			btn.disabled = not online
-			btn.pressed.connect(func(): Economy.request_equip_knife.rpc_id(1, id))
-		else:
-			btn.text = "Купити"
-			btn.disabled = not online
-			btn.pressed.connect(func(): Economy.request_buy_knife.rpc_id(1, id))
-		row.add_child(btn)
-
-	# Скіни зброї
-	_add_shop_header("Скіни зброї")
-	for sid in Economy.SKIN_ORDER:
-		var sinfo: Dictionary = Economy.WEAPON_SKINS[sid]
-		var weapon: String = sinfo["weapon"]
-		var s_owned: bool = Economy.view_owned.has(sid)
-		var s_equipped: bool = str(Economy.view_skins.get(weapon, "")) == sid
-
-		var srow := HBoxContainer.new()
-		srow.add_theme_constant_override("separation", 12)
-		_shop_rows.add_child(srow)
-
-		var s_name := Label.new()
-		s_name.text = str(sinfo["name"])
-		s_name.custom_minimum_size = Vector2(220, 0)
-		s_name.add_theme_font_size_override("font_size", 24)
-		srow.add_child(s_name)
-
-		var s_price := Label.new()
-		s_price.text = "Є у тебе" if s_owned else "%d коїнів" % int(sinfo["price"])
-		s_price.custom_minimum_size = Vector2(150, 0)
-		s_price.add_theme_font_size_override("font_size", 20)
-		srow.add_child(s_price)
-
-		var s_btn := Button.new()
-		s_btn.custom_minimum_size = Vector2(160, 44)
-		s_btn.disabled = not online
-		if s_equipped:
-			s_btn.text = "Зняти"
-			s_btn.pressed.connect(func(): Economy.request_equip_skin.rpc_id(1, weapon, ""))
-		elif s_owned:
-			s_btn.text = "Вибрати"
-			s_btn.pressed.connect(func(): Economy.request_equip_skin.rpc_id(1, weapon, sid))
-		else:
-			s_btn.text = "Купити"
-			s_btn.pressed.connect(func(): Economy.request_buy_skin.rpc_id(1, sid))
-		srow.add_child(s_btn)
-
-
-func _add_shop_header(text: String) -> void:
-	var h := Label.new()
-	h.text = text
-	h.add_theme_font_size_override("font_size", 20)
-	h.modulate = Color(1, 1, 1, 0.65)
-	_shop_rows.add_child(h)
-
-
-func _refresh_knife_label() -> void:
-	if knife_label == null:
-		return
-	var id: String = Economy.view_equipped if Economy.view_equipped != "" else Loadout.knife
-	var info: Dictionary = Economy.KNIVES.get(id, {"name": "?"})
-	knife_label.text = "Ніж: %s" % info["name"]
-
-func _refresh_skin_label() -> void:
-	if ak_label == null:
-		return
-	ak_label.text = "АК-47: %s" % _skin_display_name("ak47", Loadout.ak_skin)
-	awp_label.text = "AWP: %s" % _skin_display_name("awp", Loadout.awp_skin)
-
-
-func _skin_display_name(weapon: String, local_skin: String) -> String:
-	var sid: String = str(Economy.view_skins.get(weapon, ""))
-	if sid == "":
-		sid = local_skin
-	if Economy.WEAPON_SKINS.has(sid):
-		return str(Economy.WEAPON_SKINS[sid]["skin"])
-	return "стандартний"
-
-# Кнопка "Налаштування" під вибором ножа відкриває вікно з вкладками "Миша" і "Приціл".
+# Вікно налаштувань (вкладки "Миша" і "Приціл"); відкривається кнопкою НАЛАШТУВАННЯ в меню.
 func _make_settings_ui() -> void:
 	CrosshairConfig.ensure_loaded()
-
-	var open_btn := Button.new()
-	open_btn.text = "Налаштування"
-	open_btn.position = Vector2(1020, 560)
-	open_btn.size = Vector2(250, 60)
-	open_btn.add_theme_font_size_override("font_size", 26)
-	open_btn.pressed.connect(func(): _settings_layer.visible = true)
-	add_child(open_btn)
 
 	_settings_layer = CanvasLayer.new()
 	_settings_layer.layer = 10
@@ -601,9 +377,9 @@ func _on_button_pressed() -> void:
 		_store_nick(nick_input.text)
 	_searching = true
 	_attempts = 0
-	network_panel.visible = true
+	_show_search(true)
 	if _online():
-		status_label.text = "Пошук суперника..."
+		_set_status("Пошук суперника...")
 		Matchmaker.find_match()
 		return
 	_connect()
@@ -611,7 +387,7 @@ func _on_button_pressed() -> void:
 
 func _connect() -> void:
 	_attempts += 1
-	status_label.text = "Підключення до сервера... (безкоштовний сервер може прокидатись до хвилини)"
+	_set_status("Підключення до сервера... (безкоштовний сервер може прокидатись до хвилини)")
 	Network.join_game(ip_input.text.strip_edges())
 
 
@@ -623,7 +399,7 @@ func _on_connected() -> void:
 		Engine.remove_meta("pending_bot_win")
 	if not _searching:
 		return
-	status_label.text = "Пошук суперника..."
+	_set_status("Пошук суперника...")
 	Matchmaker.find_match()
 
 
@@ -633,9 +409,9 @@ func _on_connection_failed() -> void:
 		return
 	if _attempts >= MAX_CONNECT_ATTEMPTS:
 		_searching = false
-		status_label.text = "Не вдалося підключитись до сервера. Спробуй ще раз."
+		_set_status("Не вдалося підключитись до сервера. Спробуй ще раз.")
 		return
-	status_label.text = "Сервер прокидається... спроба %d/%d" % [_attempts + 1, MAX_CONNECT_ATTEMPTS]
+	_set_status("Сервер прокидається... спроба %d/%d" % [_attempts + 1, MAX_CONNECT_ATTEMPTS])
 	await get_tree().create_timer(2.0).timeout
 	if _searching:
 		_connect()
@@ -644,7 +420,7 @@ func _on_connection_failed() -> void:
 func _on_cancel_pressed() -> void:
 	_searching = false
 	Matchmaker.cancel_search()
-	network_panel.visible = false
+	_show_search(false)
 	_bg_attempts = 0
 	_bg_timer.start(1.0)   # cancel_search розриває зв'язок — відновлюємо його для балансу
 

@@ -16,7 +16,7 @@ extends Camera3D
 
 var player_body: CharacterBody3D = null
 
-enum Weapon { AK47, KNIFE, SNIPER }
+enum Weapon { AK47, KNIFE, SNIPER, M4 }
 var current_weapon: Weapon = Weapon.KNIFE
 
 @export_category("Shooting Settings")
@@ -141,6 +141,50 @@ var _sounds_loaded_awp: bool = false
 
 const SNIPER_MODEL_PATHS: Array[String] = ["res://awp/awp.glb", "res://awp/awp_style.glb"]
 
+# ------------------------------------------------------------------
+# M4A1 (поки без стрільби: тільки модель в руках, меню, HUD, магазин)
+# Береться вузол head/Camera3D/m4 зі сцени (положення з редактора лишається як є).
+# Якщо вузла немає — будується з res://m4/m4a1_detailed_v3.glb зі значеннями нижче.
+# ------------------------------------------------------------------
+@export_category("M4")
+@export var m4_scene: PackedScene
+@export var m4_view_position: Vector3 = Vector3(0.303, -0.49, -0.55)
+@export var m4_view_rotation_deg: Vector3 = Vector3(0.0, 101.4, 0.0)
+@export var m4_view_scale: Vector3 = Vector3(1.3, 1.3, 1.3)
+@export var m4_mag_size: int = 30
+@export var m4_reserve_total: int = 90
+@export var m4_damage: float = 30.0 # Урон по тулубу, руках і ногах; голова задається окремо нижче.
+@export var m4_head_damage: float = 60.0
+@export var m4_fire_rate: float = 0.14 # Повільніше: приблизно 7.1 пострілу/с.
+@export var m4_reload_time: float = 2.4
+@export var m4_recoil_up_multiplier: float = 0.72
+@export var m4_recoil_side_multiplier: float = 0.78
+var m4_shot_count: int = 0
+const M4_SPRAY_PATTERN: Array[Vector2] = [
+	Vector2(0.34, 0.00), Vector2(0.48, 0.03), Vector2(0.62, -0.04),
+	Vector2(0.72, 0.06), Vector2(0.78, -0.08), Vector2(0.80, 0.10),
+	Vector2(0.76, -0.12), Vector2(0.70, 0.16), Vector2(0.62, 0.22),
+	Vector2(0.55, 0.28), Vector2(0.48, 0.24), Vector2(0.42, 0.12),
+	Vector2(0.38, -0.16), Vector2(0.36, -0.24), Vector2(0.38, -0.28),
+	Vector2(0.40, -0.22), Vector2(0.36, -0.10), Vector2(0.34, 0.10),
+	Vector2(0.36, 0.22), Vector2(0.38, 0.26), Vector2(0.34, 0.20),
+	Vector2(0.32, 0.08), Vector2(0.34, -0.14), Vector2(0.34, -0.22),
+	Vector2(0.32, -0.18), Vector2(0.30, -0.08), Vector2(0.30, 0.10),
+	Vector2(0.28, 0.18), Vector2(0.28, 0.12), Vector2(0.26, -0.06)
+]
+const M4_MODEL_PATHS: Array[String] = ["res://m4/m4a1_detailed_v3.glb"]
+var m4_holder: Node3D = null
+var m4_anim: AnimationPlayer = null      # AnimationPlayer з вузла m4 (анімація "draw")
+var _m4_pose_base: Array = []            # звичайна поза M4 + рук зі сцени (до будь-якої анімації)
+const M4_ANIM_DRAW := "draw"
+const M4_DRAW_TIME: float = 0.75         # тривалість діставання, с
+const M4_DRAW_START_OFFSET := Vector3(0.14, -0.62, 0.18)   # звідки з'являється M4 (простір камери)
+const M4_DRAW_START_ROT := Vector3(0.0, 0.22, -0.65)       # нахил стовбуром вниз на старті
+const M4_DRAW_ARMS_OFFSET := Vector3(0.0, -0.62, 0.18)     # руки йдуть знизу разом зі зброєю
+var m4_muzzle_point: Marker3D = null
+var m4_ammo_in_mag: int = 30
+var m4_reserve: int = 90
+
 # Назви анімацій у AnimationPlayer снайперки (сцена character.tscn).
 const SNIPER_ANIM_DRAW := "draw"
 const SNIPER_ANIM_RELOAD := "reload"
@@ -158,6 +202,8 @@ var _ak_muzzle_flash: Sprite3D = null
 var _sniper_muzzle_flash: Sprite3D = null
 var _ak_muzzle_flash_tween: Tween = null
 var _sniper_muzzle_flash_tween: Tween = null
+var _m4_muzzle_flash: Sprite3D = null
+var _m4_muzzle_flash_tween: Tween = null
 
 var sniper_ammo_in_mag: int = 0
 var sniper_reserve: int = 0
@@ -167,6 +213,9 @@ var _sniper_reload_id: int = 0
 # AnimationPlayer снайперки зі сцени та початкові пози вузлів, які він чіпає (AWP + руки).
 var sniper_anim: AnimationPlayer = null
 var _sniper_pose_base: Array = []
+# Поза «тримаю AWP»: кінцеві кадри анімації draw (AWP + руки). Саме в ній AWP та руки мають стояти,
+# коли нічого не відбувається (після огляду F, скасування огляду, респавну). Це і є «idle».
+var _sniper_hold_base: Array = []
 var _base_fov: float = 75.0
 var _base_mouse_sens: float = -1.0
 var _scope_layer: CanvasLayer = null
@@ -234,6 +283,7 @@ func _ready() -> void:
 	_ensure_input_action("weapon_menu", KEY_E)
 	_ensure_input_action("scope", KEY_NONE, MOUSE_BUTTON_RIGHT)
 	_setup_sniper()
+	_setup_m4()
 	_capture_knife_inspect_base()
 	_bolisong_pose_base = _capture_pose_base(bolisong_anim)
 	_butterfly_pose_base = _capture_pose_base(butterfly_anim)
@@ -280,6 +330,8 @@ func _ready() -> void:
 	reserve_ammo = mag_size * (mag_count - 1)
 	sniper_ammo_in_mag = sniper_mag_size
 	sniper_reserve = sniper_reserve_total
+	m4_ammo_in_mag = m4_mag_size
+	m4_reserve = m4_reserve_total
 	_setup_scope_ui()
 	_setup_weapon_menu()
 	_setup_viewmodel_overlay()
@@ -333,6 +385,7 @@ func _process(delta: float) -> void:
 		recoil_target = recoil_target.move_toward(Vector2.ZERO, step_rad)
 		if recoil_target == Vector2.ZERO and current_spread_deg <= 0.0:
 			shot_count = 0
+			m4_shot_count = 0
 
 	# Плавно наздоганяємо recoil_target (без різких ривків ні вгору, ні вниз)
 	var prev_recoil: Vector2 = recoil_current
@@ -345,9 +398,12 @@ func _process(delta: float) -> void:
 	if _weapon_menu_open and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		_close_weapon_menu(false)
 
-	if full_auto and current_weapon == Weapon.AK47 and not _weapon_menu_open and not _is_frozen() and not _is_player_dead() and not _is_paused() and Input.is_action_pressed("shoot"):
+	if full_auto and (current_weapon == Weapon.AK47 or current_weapon == Weapon.M4) and not _weapon_menu_open and not _is_frozen() and not _is_player_dead() and not _is_paused() and Input.is_action_pressed("shoot"):
 		if can_shoot and not is_reloading and not is_drawing:
-			shoot()
+			if current_weapon == Weapon.M4:
+				m4_shoot()
+			else:
+				shoot()
 
 	_update_crosshair(delta)
 	_sync_viewmodel_camera()
@@ -368,7 +424,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Меню паузи відкрите — ігрові дії вимкнені.
 	if _is_paused():
 		return
-	# E — меню вибору основної зброї (АК-47 / AWP). Поки воно відкрите, ігрові дії вимкнені.
+	# E — меню вибору основної зброї (АК-47 / M4 / AWP). Поки воно відкрите, ігрові дії вимкнені.
 	if event.is_action_pressed("weapon_menu"):
 		if _weapon_menu_open:
 			_close_weapon_menu()
@@ -391,8 +447,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event.is_action_pressed("shoot"):
-		if current_weapon == Weapon.AK47 and can_shoot and not is_reloading and not is_drawing:
-			shoot()
+		if (current_weapon == Weapon.AK47 or current_weapon == Weapon.M4) and can_shoot and not is_reloading and not is_drawing:
+			if current_weapon == Weapon.M4:
+				m4_shoot()
+			else:
+				shoot()
 		elif current_weapon == Weapon.KNIFE and not is_drawing and not is_attacking:
 			knife_attack()
 		elif current_weapon == Weapon.SNIPER:
@@ -405,6 +464,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("reload"):
 		if current_weapon == Weapon.AK47 and not is_reloading and not is_drawing:
 			reload()
+		elif current_weapon == Weapon.M4 and not is_reloading and not is_drawing:
+			m4_reload()
 		elif current_weapon == Weapon.SNIPER:
 			sniper_reload()
 
@@ -446,6 +507,13 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 	_set_scope(0)
 	_apply_visibility()
 	_knife_inspect_cancel()
+
+	if prev_weapon == Weapon.M4 and weapon != Weapon.M4:
+		# Зупиняємо draw і повертаємо M4 та руки в звичайну позу, щоб не «залипли» посеред анімації.
+		_m4_reset_pose()
+		_restore_arms_default_poses()
+	if prev_weapon == Weapon.M4 and _has_authority():
+		is_reloading = false
 
 	ak47.set_process(weapon == Weapon.AK47)
 	ak47.set_physics_process(weapon == Weapon.AK47)
@@ -543,6 +611,34 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 		if _has_authority():
 			is_drawing = true
 		await get_tree().create_timer(draw_length).timeout
+		if my_switch != _switch_id:
+			return
+		if _has_authority():
+			is_drawing = false
+			_update_ammo_hud()
+	elif weapon == Weapon.M4:
+		if ak47_anim:
+			ak47_anim.stop()
+		if ak47_reload_anim:
+			ak47_reload_anim.stop()
+		if knife_anim:
+			knife_anim.stop()
+		if knife_attack_anim:
+			knife_attack_anim.stop()
+		_restore_arms_default_poses()
+		if bolisong_anim:
+			bolisong_anim.stop()
+			_restore_pose_base(_bolisong_pose_base)
+		_butterfly_cancel()
+		_restore_pose_base(_butterfly_pose_base)
+		if _has_authority():
+			_update_ammo_hud()
+		# Діставання M4: анімація "draw" (зброя й руки піднімаються знизу в позу «тримаю»).
+		var m4_draw_length: float = _m4_play_draw()
+		if _has_authority() and m4_draw_length > 0.0:
+			is_drawing = true
+		await get_tree().create_timer(m4_draw_length).timeout
+		# Поки чекали, зброю перемкнули знову — це перемикання застаріло.
 		if my_switch != _switch_id:
 			return
 		if _has_authority():
@@ -689,25 +785,154 @@ func shoot() -> void:
 	can_shoot = true
 
 
+func m4_shoot() -> void:
+	if _is_player_dead() or current_weapon != Weapon.M4 or not can_shoot:
+		return
+	if m4_ammo_in_mag <= 0:
+		if m4_reserve > 0:
+			m4_reload()
+		return
+
+	can_shoot = false
+	m4_ammo_in_mag -= 1
+	_update_ammo_hud()
+	var direction: Vector3 = _get_spread_direction()
+	var spawn_pos: Vector3 = global_transform.origin
+	var room := Matchmaker.room_of(self)
+	if room and bool(room.get_meta("bot_match", false)):
+		_spawn_bullet_rpc(spawn_pos, direction, multiplayer.get_unique_id(), m4_damage, -1.0)
+	else:
+		Matchmaker.rpc_room(self, "_spawn_bullet_rpc", [spawn_pos, direction, multiplayer.get_unique_id(), m4_damage, -1.0], false)
+
+	_apply_recoil()
+	var increment: float = spread_increase_per_shot * 0.82
+	if shot_count >= shots_before_heavy_spread:
+		increment = heavy_spread_increase_per_shot * 0.72
+	current_spread_deg = minf(current_spread_deg + increment, max_spread_deg * 0.85)
+	shot_count += 1
+	m4_shot_count += 1
+	await get_tree().create_timer(m4_fire_rate).timeout
+	can_shoot = true
+
+
+func m4_reload() -> void:
+	if is_reloading or m4_ammo_in_mag >= m4_mag_size or m4_reserve <= 0:
+		return
+	is_reloading = true
+	can_shoot = false
+	await get_tree().create_timer(m4_reload_time).timeout
+	if not is_inside_tree():
+		return
+	var needed: int = m4_mag_size - m4_ammo_in_mag
+	var take: int = min(needed, m4_reserve)
+	m4_ammo_in_mag += take
+	m4_reserve -= take
+	current_spread_deg = 0.0
+	shot_count = 0
+	m4_shot_count = 0
+	_update_ammo_hud()
+	is_reloading = false
+	can_shoot = true
+
+
 @rpc("call_local", "any_peer", "reliable")
 func _spawn_bullet_rpc(spawn_pos: Vector3, direction: Vector3, shooter_id: int, damage_override: float = -1.0, speed_override: float = -1.0) -> void:
 	# Хітскан: постріл — миттєвий промінь, без об'єкта кулі.
 	var is_sniper: bool = speed_override > 0.0
+	var is_m4: bool = damage_override > 0.0 and is_equal_approx(damage_override, m4_damage)
 	var damage: float = damage_override if damage_override > 0.0 else ak_damage
 	_fire_hitscan(spawn_pos, direction, shooter_id, damage)
 
-	# Трейсер кулі (як у CS2): короткий жовто-білий слід, що летить до цілі.
-	_spawn_bullet_tracer(spawn_pos, direction, is_sniper)
+	# Трейсер кулі: короткий слід у напрямку пострілу.
+	_spawn_bullet_tracer(spawn_pos, direction, is_sniper, is_m4)
 
-	# Спалах показується на кожному клієнті в точці дула.
-	# speed_override > 0 використовується для AWP; звичайний постріл — AK/інша зброя.
-	_play_weapon_muzzle_flash(is_sniper)
+	# Кожна зброя має власну точку спалаху: M4 не використовує маркер АК.
+	if is_m4:
+		_play_m4_muzzle_flash()
+	else:
+		_play_weapon_muzzle_flash(is_sniper)
 
-	# Звук чути на всіх клієнтах — у точці дула (суперник чує з відстані).
+	# Поки окремий запис M4 не призначений, використовується стандартний звук пострілу.
 	_play_shot_sound(spawn_pos, is_sniper)
 
 
-func _spawn_bullet_tracer(spawn_pos: Vector3, direction: Vector3, is_sniper: bool) -> void:
+func _find_m4_muzzle_world_position() -> Vector3:
+	# Фіксована точка на кінці ствола M4A1 з моделі m4a1_detailed_v3.glb.
+	if is_instance_valid(m4_muzzle_point):
+		return m4_muzzle_point.global_position
+	return global_position + (-global_transform.basis.z.normalized() * 0.5)
+
+
+func _get_or_create_m4_muzzle_flash() -> Sprite3D:
+	if is_instance_valid(_m4_muzzle_flash):
+		return _m4_muzzle_flash
+
+	if not ResourceLoader.exists(MUZZLE_FLASH_TEXTURE_PATH):
+		push_warning("Не знайдено текстуру спалаху M4: %s" % MUZZLE_FLASH_TEXTURE_PATH)
+		return null
+
+	var texture := load(MUZZLE_FLASH_TEXTURE_PATH) as Texture2D
+	if texture == null:
+		push_warning("Не вдалося завантажити текстуру спалаху M4: %s" % MUZZLE_FLASH_TEXTURE_PATH)
+		return null
+
+	var flash := Sprite3D.new()
+	flash.name = "M4_MuzzleFlash"
+	flash.texture = texture
+	flash.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	flash.shaded = false
+	flash.no_depth_test = true
+	flash.pixel_size = 0.001
+	flash.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	flash.scale = Vector3.ONE * 0.0533333
+	flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	flash.layers = VIEWMODEL_LAYER
+	flash.visible = false
+
+	# Спрайт закріплений на точці дула: не шукає позицію заново під час пострілу.
+	if is_instance_valid(m4_muzzle_point):
+		m4_muzzle_point.add_child(flash)
+	else:
+		add_child(flash)
+	_m4_muzzle_flash = flash
+	return flash
+
+
+func _play_m4_muzzle_flash() -> void:
+	if not _has_authority() or not is_instance_valid(m4_holder):
+		return
+	var flash := _get_or_create_m4_muzzle_flash()
+	if flash == null:
+		return
+
+	flash.position = Vector3.ZERO
+	flash.rotation = Vector3.ZERO
+
+	if _m4_muzzle_flash_tween and _m4_muzzle_flash_tween.is_running():
+		_m4_muzzle_flash_tween.kill()
+
+	flash.visible = true
+	flash.modulate = Color.WHITE
+	flash.scale = Vector3.ONE * 0.0533333
+
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(flash, "scale", Vector3.ONE * 0.0733333, 0.075)
+	tween.parallel().tween_property(flash, "modulate:a", 0.0, 0.075)
+	tween.tween_callback(func():
+		if is_instance_valid(flash):
+			flash.visible = false
+	)
+	_m4_muzzle_flash_tween = tween
+
+func _collect_m4_meshes(node: Node, result: Array[Node]) -> void:
+	for child in node.get_children():
+		if child is MeshInstance3D:
+			result.append(child)
+		_collect_m4_meshes(child, result)
+
+
+func _spawn_bullet_tracer(spawn_pos: Vector3, direction: Vector3, is_sniper: bool, is_m4: bool = false) -> void:
 	var dir: Vector3 = direction.normalized()
 	if dir.length() < 0.001:
 		dir = -global_transform.basis.z
@@ -715,7 +940,11 @@ func _spawn_bullet_tracer(spawn_pos: Vector3, direction: Vector3, is_sniper: boo
 	var end_pos: Vector3 = _get_tracer_end_point(spawn_pos, dir)
 	var start_pos: Vector3 = spawn_pos + dir * 0.55
 	var muzzle_node: Node3D = sniper_muzzle if is_sniper else muzzle
-	if _has_authority() and sniper_scope_level == 0 and is_instance_valid(muzzle_node):
+	if is_m4 and _has_authority():
+		# Візуальний трасер M4 починається з переднього кінця її моделі,
+		# а не з маркера MuzzlePoint автомата AK-47.
+		start_pos = _find_m4_muzzle_world_position()
+	elif _has_authority() and sniper_scope_level == 0 and is_instance_valid(muzzle_node):
 		start_pos = muzzle_node.global_position
 
 	var dist: float = start_pos.distance_to(end_pos)
@@ -766,7 +995,7 @@ func _get_tracer_end_point(from: Vector3, dir: Vector3) -> Vector3:
 	var max_dist: float = maxf(max_shoot_distance, 1000.0)
 	var query := PhysicsRayQueryParameters3D.create(from, from + dir * max_dist)
 	query.collide_with_bodies = true
-	query.collide_with_areas = false
+	query.collide_with_areas = true
 	var ex: Array[RID] = _hitscan_exclude()
 	query.exclude = ex
 
@@ -927,7 +1156,7 @@ func _fire_hitscan(from: Vector3, direction: Vector3, shooter_id: int, damage: f
 
 	var query := PhysicsRayQueryParameters3D.create(from, from + dir * maxf(max_shoot_distance, 1000.0))
 	query.collide_with_bodies = true
-	query.collide_with_areas = false
+	query.collide_with_areas = true
 	var ex: Array[RID] = _hitscan_exclude()
 	query.exclude = ex
 
@@ -954,7 +1183,13 @@ func _fire_hitscan(from: Vector3, direction: Vector3, shooter_id: int, damage: f
 	if "is_dead" in target and target.is_dead:
 		return
 
-	var final_damage: float = damage * hb.damage_multiplier
+	var final_damage: float
+	if current_weapon == Weapon.M4:
+		# M4: 60 у голову та 30 у будь-яку іншу частину тіла.
+		# Не множимо на старі коефіцієнти Hitbox, щоб значення були точними.
+		final_damage = m4_head_damage if hb.part_name.to_lower() == "head" else m4_damage
+	else:
+		final_damage = damage * hb.damage_multiplier
 	target.take_damage(final_damage, shooter_id)
 	_spawn_damage_popup(target, final_damage, hb.part_name == "head")
 	_watch_for_kill(target, hb.part_name == "head", current_weapon)
@@ -1163,6 +1398,8 @@ func _weapon_display_name(weapon: int) -> String:
 			return "AK-47"
 		Weapon.SNIPER:
 			return "AWP"
+		Weapon.M4:
+			return "M4"
 	return "Ніж"
 
 
@@ -1286,12 +1523,20 @@ func _reset_collision_scales(node: Node) -> void:
 
 func _apply_recoil() -> void:
 	_time_since_last_shot = 0.0
-	var idx: int = clampi(shot_count, 0, AK_SPRAY_PATTERN.size() - 1)
-	var step: Vector2 = AK_SPRAY_PATTERN[idx]
+	var step: Vector2
+	var up_scale: float = 1.0
+	var side_scale: float = 1.0
+	if current_weapon == Weapon.M4:
+		var idx_m4: int = clampi(m4_shot_count, 0, M4_SPRAY_PATTERN.size() - 1)
+		step = M4_SPRAY_PATTERN[idx_m4]
+		up_scale = m4_recoil_up_multiplier
+		side_scale = m4_recoil_side_multiplier
+	else:
+		var idx: int = clampi(shot_count, 0, AK_SPRAY_PATTERN.size() - 1)
+		step = AK_SPRAY_PATTERN[idx]
 
-	var kick_up: float = deg_to_rad(step.x * recoil_kick_up_deg)
-	var kick_side: float = deg_to_rad(step.y * recoil_kick_side_deg)
-
+	var kick_up: float = deg_to_rad(step.x * recoil_kick_up_deg * up_scale)
+	var kick_side: float = deg_to_rad(step.y * recoil_kick_side_deg * side_scale)
 	recoil_target += Vector2(kick_up, kick_side)
 
 
@@ -1349,9 +1594,15 @@ func _reset_ammo_rpc() -> void:
 	current_spread_deg = 0.0
 	sniper_ammo_in_mag = sniper_mag_size
 	sniper_reserve = sniper_reserve_total
+	m4_ammo_in_mag = m4_mag_size
+	m4_reserve = m4_reserve_total
+	m4_shot_count = 0
 	_sniper_reload_id += 1
 	_sniper_next_shot_ms = 0
-	_sniper_reset_pose()
+	if current_weapon == Weapon.SNIPER:
+		_sniper_hold_pose()
+	else:
+		_sniper_reset_pose()
 	if _has_authority() and current_weapon == Weapon.SNIPER:
 		is_inspecting = false
 	_set_scope(0)
@@ -1379,6 +1630,8 @@ func _update_ammo_hud() -> void:
 		ammo_label.text = "%d / %d" % [ammo_in_mag, reserve_ammo]
 	elif current_weapon == Weapon.SNIPER:
 		ammo_label.text = "%d / %d" % [sniper_ammo_in_mag, sniper_reserve]
+	elif current_weapon == Weapon.M4:
+		ammo_label.text = "%d / %d" % [m4_ammo_in_mag, m4_reserve]
 
 
 func _get_spread_direction() -> Vector3:
@@ -1516,7 +1769,7 @@ func _apply_visibility() -> void:
 	# Моделі від першої особи (АК, ножі, AWP, руки) бачить тільки їхній власник.
 	# У чужого клієнта копія цього гравця має їх повністю сховані, інакше вони «висять у повітрі» біля нього.
 	if not _has_authority():
-		for item in [ak47, knife, bolisong, butterfly, sniper_holder]:
+		for item in [ak47, knife, bolisong, butterfly, sniper_holder, m4_holder]:
 			if item:
 				item.visible = false
 		if player_body != null:
@@ -1527,6 +1780,7 @@ func _apply_visibility() -> void:
 	var is_ak: bool = (current_weapon == Weapon.AK47)
 	var is_kn: bool = (current_weapon == Weapon.KNIFE)
 	var is_sn: bool = (current_weapon == Weapon.SNIPER)
+	var is_m4: bool = (current_weapon == Weapon.M4)
 	var bf: bool = knife_skin == "bolisong" and bolisong != null
 	var bt: bool = knife_skin == "butterfly" and butterfly != null
 	ak47.visible = is_ak
@@ -1538,6 +1792,8 @@ func _apply_visibility() -> void:
 	# Модель снайперки ховаємо, поки дивимось крізь приціл.
 	if sniper_holder:
 		sniper_holder.visible = is_sn and sniper_scope_level == 0
+	if m4_holder:
+		m4_holder.visible = is_m4
 	_update_arms_visibility(is_sn)
 
 
@@ -1553,6 +1809,8 @@ func _enforce_held_only() -> void:
 		_ak_muzzle_flash.visible = false
 	if is_instance_valid(_sniper_muzzle_flash) and current_weapon != Weapon.SNIPER:
 		_sniper_muzzle_flash.visible = false
+	if is_instance_valid(_m4_muzzle_flash) and current_weapon != Weapon.M4:
+		_m4_muzzle_flash.visible = false
 
 
 # Руки завжди видимі для всіх видів зброї (ховаються лише під час зуму в приціл снайперки).
@@ -1886,6 +2144,114 @@ func _ensure_input_action(action: String, key: Key = KEY_NONE, mouse: MouseButto
 		InputMap.action_add_event(action, em)
 
 
+func _setup_m4() -> void:
+	# 1) Вузол зі сцени (head/Camera3D/m4) — береться як є, з положенням, яке ви виставили в редакторі.
+	for n in ["m4", "M4", "m4a1", "M4A1"]:
+		m4_holder = get_node_or_null(n) as Node3D
+		if m4_holder != null:
+			break
+	if m4_holder == null:
+		# 2) Вузла немає — будуємо з моделі.
+		var packed: PackedScene = m4_scene
+		if packed == null:
+			for path in M4_MODEL_PATHS:
+				if ResourceLoader.exists(path):
+					packed = load(path) as PackedScene
+					break
+		if packed == null:
+			push_warning("Модель M4A1 не знайдена (шукав вузол 'm4' у камері та %s) — M4 вимкнено." % str(M4_MODEL_PATHS))
+			return
+		var model := packed.instantiate() as Node3D
+		if model == null:
+			push_warning("Модель M4A1 не вдалось завантажити як Node3D.")
+			return
+		m4_holder = Node3D.new()
+		m4_holder.name = "m4"
+		add_child(m4_holder)
+		m4_holder.add_child(model)
+		m4_holder.position = m4_view_position
+		m4_holder.rotation_degrees = m4_view_rotation_deg
+		m4_holder.scale = m4_view_scale
+	# Точне кріплення спалаху для цієї моделі: ствол уздовж локальної осі +X.
+	# Кінець ствола моделі знаходиться біля X=0.49, Y=0.28, Z=0.
+	m4_muzzle_point = m4_holder.get_node_or_null("MuzzlePoint") as Marker3D
+	if m4_muzzle_point == null:
+		m4_muzzle_point = Marker3D.new()
+		m4_muzzle_point.name = "MuzzlePoint"
+		m4_holder.add_child(m4_muzzle_point)
+	m4_muzzle_point.position = Vector3(0.515, 0.28, 0.0)
+	_sniper_disable_shadows(m4_holder)   # просто вимикає тіні у всіх мешах вузла
+	m4_holder.visible = false
+	m4_anim = _get_anim_player(m4_holder)
+	_m4_pose_base = _capture_pose_base(m4_anim)
+	_m4_build_draw_animation()
+
+
+# Запускає draw M4 з першого кадру. Повертає тривалість (с) або 0, якщо анімації немає.
+func _m4_play_draw() -> float:
+	_m4_reset_pose()
+	if m4_anim == null or not m4_anim.has_animation(M4_ANIM_DRAW):
+		return 0.0
+	m4_anim.play(M4_ANIM_DRAW)
+	m4_anim.seek(0.0, true)   # одразу застосувати стартовий кадр — без миготіння кінцевою позою
+	return m4_anim.current_animation_length / maxf(absf(m4_anim.speed_scale), 0.01)
+
+
+# Зупиняє анімацію й повертає M4 та руки в позу зі сцени.
+func _m4_reset_pose() -> void:
+	if m4_anim:
+		m4_anim.stop()
+	_restore_pose_base(_m4_pose_base)
+
+
+# У сцені "draw" для M4 має лише один ключ (кінцева поза). Тут з нього робиться справжня анімація:
+# кінцева поза (з вашого ключа) лишається цільовою, а на старті M4 і руки знизу.
+# Якщо ви самі намалюєте в редакторі draw із кількома ключами — код її не чіпає.
+func _m4_build_draw_animation() -> void:
+	if m4_anim == null or not m4_anim.has_animation(M4_ANIM_DRAW):
+		return
+	var anim: Animation = m4_anim.get_animation(M4_ANIM_DRAW)
+	for i in anim.get_track_count():
+		if anim.track_get_key_count(i) > 1:
+			return
+	var root: Node = m4_anim.get_node_or_null(m4_anim.root_node)
+	if root == null:
+		return
+	var cam_basis: Basis = global_transform.basis
+	var t_end: float = M4_DRAW_TIME
+	var t_land: float = M4_DRAW_TIME * 0.62
+	for i in anim.get_track_count():
+		if anim.track_get_type(i) != Animation.TYPE_VALUE or anim.track_get_key_count(i) == 0:
+			continue
+		var p: NodePath = anim.track_get_path(i)
+		var prop: String = p.get_concatenated_subnames()
+		var names: String = p.get_concatenated_names()
+		var node: Node = root if names == "" or names == "." else root.get_node_or_null(NodePath(names))
+		if node == null or (prop != "position" and prop != "rotation"):
+			continue
+		var final_v: Vector3 = anim.track_get_key_value(i, anim.track_get_key_count(i) - 1)
+		var start_v: Vector3 = final_v
+		var land_v: Vector3 = final_v
+		if node == m4_holder:
+			if prop == "position":
+				start_v = final_v + M4_DRAW_START_OFFSET
+				land_v = final_v + Vector3(0.0, 0.018, 0.0)   # легкий «підскок» перед фіксацією
+			else:
+				start_v = final_v + M4_DRAW_START_ROT
+				land_v = final_v + Vector3(0.0, 0.0, 0.05)
+		elif prop == "position" and node is Node3D and node.get_parent() is Node3D:
+			# Руки: «вниз» переводимо з простору камери в локальний простір батька руки.
+			var par := node.get_parent() as Node3D
+			start_v = final_v + par.global_transform.basis.inverse() * (cam_basis * M4_DRAW_ARMS_OFFSET)
+		while anim.track_get_key_count(i) > 0:
+			anim.track_remove_key(i, 0)
+		anim.track_insert_key(i, 0.0, start_v, 0.4)      # швидкий старт, плавне гальмування
+		anim.track_insert_key(i, t_land, land_v, 0.6)
+		anim.track_insert_key(i, t_end, final_v, 1.0)
+	anim.length = t_end
+	anim.loop_mode = Animation.LOOP_NONE
+
+
 func _setup_sniper() -> void:
 	# 1) Вузол снайперки, уже доданий у сцену (у вас: head/Camera3D/awp) — беремо його як є,
 	#    його положення в сцені стає «базовим».
@@ -1935,6 +2301,7 @@ func _setup_sniper() -> void:
 	if sniper_anim == null:
 		push_warning("AnimationPlayer снайперки не знайдено (очікую head/Camera3D/awp/AnimationPlayer) — AWP буде без анімацій.")
 	_sniper_pose_base = _capture_pose_base(sniper_anim)
+	_sniper_hold_base = _capture_sniper_hold_pose()
 	sniper_holder.visible = false
 
 
@@ -2115,6 +2482,44 @@ func _sniper_reset_pose() -> void:
 	_restore_pose_base(_sniper_pose_base)
 
 
+# Запам'ятовує останній кадр анімації draw для кожного треку (позиція/поворот AWP і рук) — це поза idle.
+func _capture_sniper_hold_pose() -> Array:
+	var result: Array = []
+	if sniper_anim == null or not sniper_anim.has_animation(SNIPER_ANIM_DRAW):
+		return result
+	var anim: Animation = sniper_anim.get_animation(SNIPER_ANIM_DRAW)
+	var root: Node = sniper_anim.get_node_or_null(sniper_anim.root_node)
+	if root == null:
+		return result
+	for i in anim.get_track_count():
+		if anim.track_get_type(i) != Animation.TYPE_VALUE:
+			continue
+		var key_count: int = anim.track_get_key_count(i)
+		if key_count == 0:
+			continue
+		var p: NodePath = anim.track_get_path(i)
+		var prop: String = p.get_concatenated_subnames()
+		if prop == "":
+			continue
+		var names: String = p.get_concatenated_names()
+		var node: Node = root if names == "" or names == "." else root.get_node_or_null(NodePath(names))
+		if node == null:
+			continue
+		result.append([node, prop, anim.track_get_key_value(i, key_count - 1)])
+	return result
+
+
+# IDLE: зупиняє анімацію й ставить AWP та руки в позу «тримаю гвинтівку» (а не в стандартну позу сцени).
+func _sniper_hold_pose() -> void:
+	_sniper_inspect_id += 1   # як і при повному скиданні: старий таймер осмотру стає недійсним
+	if sniper_anim:
+		sniper_anim.stop()
+	if _sniper_hold_base.is_empty():
+		_restore_pose_base(_sniper_pose_base)   # запасний варіант: у плеєрі немає draw
+	else:
+		_restore_pose_base(_sniper_hold_base)
+
+
 # Осмотр (клавіша F): анімація "view".
 func _sniper_inspect() -> void:
 	if sniper_anim == null or not sniper_anim.has_animation(SNIPER_ANIM_VIEW):
@@ -2129,14 +2534,14 @@ func _sniper_inspect() -> void:
 	# Осмотр перервали (постріл / перезарядка / приціл / зміна зброї) — таймер застарів.
 	if my_id != _sniper_inspect_id:
 		return
-	_sniper_reset_pose()
+	_sniper_hold_pose()   # раніше тут було _sniper_reset_pose() -> руки стрибали в позу АК/ножа
 	if _has_authority():
 		is_inspecting = false
 
 
 func _sniper_cancel_inspect() -> void:
 	if sniper_anim and sniper_anim.is_playing() and sniper_anim.current_animation == SNIPER_ANIM_VIEW:
-		_sniper_reset_pose()
+		_sniper_hold_pose()
 	if _has_authority() and current_weapon == Weapon.SNIPER:
 		is_inspecting = false
 
@@ -2182,7 +2587,7 @@ func _setup_weapon_menu() -> void:
 	row.add_theme_constant_override("separation", 16)
 	vbox.add_child(row)
 
-	for entry in [[Weapon.AK47, "AK-47"], [Weapon.SNIPER, "AWP"]]:
+	for entry in [[Weapon.AK47, "AK-47"], [Weapon.M4, "M4"], [Weapon.SNIPER, "AWP"]]:
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(200, 90)
 		b.add_theme_font_size_override("font_size", 26)
@@ -2206,6 +2611,9 @@ func _refresh_weapon_menu() -> void:
 		var picked: bool = (w == primary_weapon)
 		b.text = ("✓ " if picked else "") + label
 		if w == Weapon.SNIPER and sniper_holder == null:
+			b.disabled = true
+			b.text = label + " (немає моделі)"
+		if w == Weapon.M4 and m4_holder == null:
 			b.disabled = true
 			b.text = label + " (немає моделі)"
 
@@ -2255,7 +2663,7 @@ func _setup_viewmodel_overlay() -> void:
 	if _vm_viewport != null:
 		return
 
-	for root in [ak47, knife, bolisong, butterfly, sniper_holder]:
+	for root in [ak47, knife, bolisong, butterfly, sniper_holder, m4_holder]:
 		if root:
 			_set_render_layer(root, VIEWMODEL_LAYER)
 	if player_body != null:

@@ -68,6 +68,10 @@ var _hp_fill: ColorRect = null
 var _hp_tween: Tween = null
 var _num_tween: Tween = null
 
+var _fps_num: Label = null
+var _fps_timer: float = 0.0
+var _fps_shown: int = -1
+
 var _kill_anchor: Control = null
 var _baseline: ColorRect = null
 var _emblem_node: Control = null
@@ -94,6 +98,7 @@ func _ready() -> void:
 	_build_vignette()
 	_build_hp_panel()
 	_build_cards()
+	_build_fps_counter()
 	set_health(_max_hp, _max_hp)
 
 
@@ -379,6 +384,81 @@ func _process(delta: float) -> void:
 		base = 0.22 + 0.12 * (0.5 + 0.5 * sin(_time * 5.0))
 	if _vignette_mat:
 		_vignette_mat.set_shader_parameter("intensity", clampf(maxf(_hit, base), 0.0, 1.0))
+	_update_fps(delta)
+
+
+# ------------------------------------------------------------------
+# ЛІЧИЛЬНИК FPS (лівий верхній кут)
+# ------------------------------------------------------------------
+const FPS_FONT_BOLD := "res://fonts/Rajdhani-Bold.ttf"
+const FPS_FONT_SEMI := "res://fonts/Rajdhani-SemiBold.ttf"
+const FPS_COLOR_GOOD := Color(0.55, 0.95, 1.0, 1.0)    # холодний блакитний
+const FPS_COLOR_MID := Color(0.78, 0.86, 1.0, 1.0)     # ніжно-бузковий
+const FPS_COLOR_LOW := Color(1.0, 0.45, 0.5, 1.0)      # коралово-червоний
+
+
+func _fps_font(path: String) -> Font:
+	if ResourceLoader.exists(path):
+		var f := load(path) as Font
+		if f:
+			return f
+	# Запасний варіант, якщо шрифт ще не імпортований: гарні системні шрифти.
+	var sf := SystemFont.new()
+	sf.font_names = PackedStringArray(["Rajdhani", "Bahnschrift", "Segoe UI Semibold", "Consolas", "Arial"])
+	sf.font_weight = 700
+	return sf
+
+
+func _build_fps_counter() -> void:
+	var box := HBoxContainer.new()
+	box.name = "FpsCounter"
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_theme_constant_override("separation", 6)
+	box.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	box.position = Vector2(16, 10)
+	add_child(box)
+
+	_fps_num = Label.new()
+	_fps_num.text = "--"
+	_fps_num.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fps_num.add_theme_font_override("font", _fps_font(FPS_FONT_BOLD))
+	_fps_num.add_theme_font_size_override("font_size", 28)
+	_fps_num.add_theme_color_override("font_color", FPS_COLOR_GOOD)
+	_fps_num.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	_fps_num.add_theme_constant_override("outline_size", 6)
+	box.add_child(_fps_num)
+
+	var tag := Label.new()
+	tag.text = "FPS"
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.add_theme_font_override("font", _fps_font(FPS_FONT_SEMI))
+	tag.add_theme_font_size_override("font_size", 15)
+	tag.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	tag.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+	tag.add_theme_constant_override("outline_size", 4)
+	tag.size_flags_vertical = Control.SIZE_SHRINK_END
+	tag.add_theme_constant_override("line_spacing", 0)
+	box.add_child(tag)
+
+
+func _update_fps(delta: float) -> void:
+	if _fps_num == null:
+		return
+	_fps_timer -= delta
+	if _fps_timer > 0.0:
+		return
+	_fps_timer = 0.25   # оновлюємо 4 рази на секунду — число не мерехтить
+	var fps: int = int(Engine.get_frames_per_second())
+	if fps == _fps_shown:
+		return
+	_fps_shown = fps
+	_fps_num.text = str(fps)
+	var col: Color = FPS_COLOR_GOOD
+	if fps < 30:
+		col = FPS_COLOR_LOW
+	elif fps < 60:
+		col = FPS_COLOR_MID
+	_fps_num.add_theme_color_override("font_color", col)
 
 
 # ------------------------------------------------------------------
