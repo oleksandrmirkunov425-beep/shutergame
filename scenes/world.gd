@@ -9,6 +9,11 @@ extends Node3D
 @export var wins_to_end_game: int = 10
 @export var game_over_delay: float = 3.0
 
+@export_category("Map Settings")
+# true  — карта oasis і її точки спавну (WingmanSpawns) використовуються в УСІХ режимах (1×1, бот, 2×2).
+# false — як раніше: 1×1 і бот на desert (DesertSpawns), лише 2×2 на oasis.
+@export var oasis_in_all_modes: bool = true
+
 @export_category("Warmup Settings")
 @export var warmup_respawn_delay: float = 1.0
 
@@ -30,6 +35,7 @@ var _match_begun: bool = false
 var _rewarded: bool = false     # нагорода за матч видається лише раз
 
 var spawn_points: Array[Node3D] = []
+var _use_oasis: bool = false   # яка карта активна => з якої групи беремо спавни
 var players_node: Node
 var state: int = State.WAITING
 var countdown_value: int = 0
@@ -117,7 +123,8 @@ func _ready() -> void:
 func _configure_map_and_spawns() -> void:
 	var desert := get_node_or_null("../desert_courtyard_textured (1)")
 	var oasis := get_node_or_null("../wingman_oasis_large")
-	var use_oasis := game_mode == "2v2"
+	var use_oasis := game_mode == "2v2" or oasis_in_all_modes
+	_use_oasis = use_oasis
 	_set_map_active(desert, not use_oasis)
 	_set_map_active(oasis, use_oasis)
 
@@ -141,7 +148,7 @@ func _configure_map_and_spawns() -> void:
 # та SpawnPoints/WingmanSpawns (2×2). Раніше код брав прямих дітей SpawnPoints,
 # тобто самі групи (позиція 0,0,0) — через це гравці з'являлись під картою.
 func _get_spawn_root() -> Node3D:
-	var group_name := "WingmanSpawns" if game_mode == "2v2" else "DesertSpawns"
+	var group_name := "WingmanSpawns" if _use_oasis else "DesertSpawns"
 	return room.get_node_or_null("SpawnPoints/" + group_name) as Node3D
 
 
@@ -157,6 +164,37 @@ func _collect_spawn_points() -> Array[Node3D]:
 		if child is Marker3D:
 			result.append(child as Node3D)
 	return result
+
+
+# Для карти Oasis (2×2): ставить кожну точку спавну на реальну підлогу карти.
+# Промінь б'ється тільки в колізію карти, тому гравець завжди з'являється НА oasis,
+# а не в повітрі/під землею. Усе, що знайдено (або не знайдено), пишеться в консоль.
+func _snap_oasis_spawns_to_ground() -> void:
+	if not _use_oasis:
+		return
+	var oasis := get_node_or_null("../wingman_oasis_large") as Node3D
+	if oasis == null:
+		push_error("world.gd: вузол wingman_oasis_large не знайдено — спавни oasis не можна прив'язати до карти!")
+		return
+	var space := get_world_3d().direct_space_state
+	var mask := 0xFFFFFFFF & ~2   # усі шари, крім шару гравців
+	for sp in spawn_points:
+		var pos := sp.global_position
+		var hit_y := NAN
+		# 1) спершу шукаємо підлогу трохи нижче/вище маркера (щоб не влучити в дах),
+		# 2) якщо не знайшли — стріляємо зверху вниз з великої висоти.
+		for start_up in [3.0, 80.0]:
+			var q := PhysicsRayQueryParameters3D.create(pos + Vector3.UP * start_up, pos + Vector3.DOWN * 400.0, mask)
+			var r := space.intersect_ray(q)
+			if not r.is_empty():
+				hit_y = (r["position"] as Vector3).y
+				break
+		if is_nan(hit_y):
+			push_warning("world.gd: під точкою спавну '%s' (%s) НЕМАЄ колізії oasis — гравці тут провалюватимуться. Перевір, що в glb є колізія і що точка стоїть над картою." % [sp.name, str(pos)])
+			continue
+		# Початок гравця — центр капсули, тому піднімаємо на пів-висоти + запас.
+		sp.global_position = Vector3(pos.x, hit_y + 1.2, pos.z)
+		print("[world] oasis spawn %s: y %.2f -> %.2f" % [sp.name, pos.y, sp.global_position.y])
 
 
 func _set_map_active(map_node: Node, active: bool) -> void:
@@ -189,6 +227,7 @@ func begin_match() -> void:
 	if not multiplayer.is_server():
 		return
 	_match_begun = true
+	_snap_oasis_spawns_to_ground()   # на цей момент фізика карти вже точно готова
 	_assign_teams()
 	if bot_match:
 		nicks[1] = str(Engine.get_meta("player_nick", "Player"))
@@ -206,7 +245,7 @@ func begin_match() -> void:
 func _spawn_bot() -> void:
 	if players_node.get_node_or_null(str(BOT_ID)):
 		return
-	var spawn_index := 1 if spawn_points.size() > 1 else 0
+	var spawn_index := _bot_spawn_index()
 	var bot := player_scene.instantiate() as CharacterBody3D
 	bot.name = str(BOT_ID)
 	bot.set_multiplayer_authority(BOT_ID)
@@ -334,7 +373,7 @@ func _begin_round() -> void:
 	if bot_match:
 		ids.append(BOT_ID)
 	for i in ids.size():
-		var spawn_index := 1 if bot_match and ids[i] == BOT_ID else _spawn_index_for(ids[i])
+		var spawn_index := _bot_spawn_index() if bot_match and ids[i] == BOT_ID else _spawn_index_for(ids[i])
 		_spawn_or_respawn_player(ids[i], spawn_index)
 		alive_players[ids[i]] = true
 
@@ -380,9 +419,18 @@ func _set_frozen_all(value: bool) -> void:
 			player.rpc_id(id, "_set_frozen", value)
 
 
+# Індекс спавну бота: на oasis — протилежний куток карти (WingmanSpawns3), на desert — друга точка.
+func _bot_spawn_index() -> int:
+	if _use_oasis:
+		return 2 if spawn_points.size() > 2 else (1 if spawn_points.size() > 1 else 0)
+	return 1 if spawn_points.size() > 1 else 0
+
+
 func _spawn_index_for(id: int) -> int:
 	if game_mode != "2v2":
-		return max(room_peers.find(id), 0)
+		var slot: int = max(room_peers.find(id), 0)
+		# На oasis у 1×1 гравці стають у протилежні кутки (точки 1 і 3), а не поруч.
+		return slot * 2 if _use_oasis else slot
 	var team := int(teams.get(id, TEAM_CT))
 	var teammates: Array = []
 	for peer_id in room_peers:
@@ -575,7 +623,7 @@ func _schedule_warmup_respawn(victim_id: int) -> void:
 
 	var spawn_index: int = _spawn_index_for(victim_id)
 	if bot_match and victim_id == BOT_ID:
-		spawn_index = 1
+		spawn_index = _bot_spawn_index()
 	_spawn_or_respawn_player(victim_id, spawn_index)
 	alive_players[victim_id] = true
 
