@@ -45,11 +45,8 @@ func _enter_death_view() -> void:
 	_player.head.visible = false   # ховає руки й зброю від першої особи
 
 	# Свою модель у цей момент показуємо, бо камера тепер збоку.
-	var is_ct: bool = _player.team == TEAM_CT
-	if _player.model_ct:
-		_player.model_ct.visible = is_ct
-	if _player.model_t:
-		_player.model_t.visible = not is_ct
+	if _player.model:
+		_player.model.visible = true   # скін команди вже виставлений в _apply_team_visual()
 
 
 func _exit_death_view() -> void:

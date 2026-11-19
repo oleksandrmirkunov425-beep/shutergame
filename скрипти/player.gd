@@ -79,8 +79,12 @@ var paused: bool:
 enum Team { CT, T }
 var team: int = -1   # -1 = ще не отримали від сервера
 
-@onready var model_ct: Node3D = get_node_or_null("operative_ct1")
-@onready var model_t: Node3D = get_node_or_null("terrorist_t1")
+# Одна модель тіла на обидві команди (голова/тулуб/руки/ноги — окремі вузли). За командою міняється
+# лише текстура (скін): player_skin_t.png / player_skin_ct.png, див. _apply_model_skin().
+@onready var model: Node3D = get_node_or_null("player_model")
+const SKIN_TEX_T := preload("res://playersModels/player_skin_t.png")
+const SKIN_TEX_CT := preload("res://playersModels/player_skin_ct.png")
+var _skin_mats: Dictionary = {}   # команда -> StandardMaterial3D
 # Одні руки на обидві команди: всі анімації прив'язані до цього вузла.
 # За командою міняються лише меші та матеріали (скін), див. _apply_arms_skin().
 @onready var arms_node: Node3D = get_node_or_null("head/arms")
@@ -117,9 +121,8 @@ func _enter_tree() -> void:
 
 func _ready() -> void:
 	# Запам'ятовуємо стоячу позу моделей ДО будь-яких анімацій/скидань.
-	for m in [model_ct, model_t]:
-		if m != null:
-			_model_base[m] = m.transform
+	if model != null:
+		_model_base[model] = model.transform
 	# Чужі копії гравця не повинні мати власного HUD: інакше в групах
 	# (score_label, health_label...) з'являються чужі лейбли, і Hud оновлює не ті.
 	if not is_multiplayer_authority():
@@ -342,12 +345,10 @@ func _process(delta: float) -> void:
 # Стискає по висоті моделі команд і хітбокси відносно ніг.
 func _apply_crouch_visuals(k: float) -> void:
 	var feet_y := -stand_height * 0.5
-	for m in [model_ct, model_t]:
-		if m == null:
-			continue
-		var base: Transform3D = _model_base.get(m, m.transform)
+	if model != null:
+		var base: Transform3D = _model_base.get(model, model.transform)
 		var squash := Transform3D(Basis.from_scale(Vector3(1.0, k, 1.0)), Vector3(0.0, feet_y * (1.0 - k), 0.0))
-		m.transform = squash * base
+		model.transform = squash * base
 	Hitbox.set_crouch(self, k, feet_y)
 
 
@@ -540,17 +541,35 @@ func _apply_team_visual() -> void:
 	var is_local := is_multiplayer_authority()
 	# Хітбокси підганяємо під модель команди (форма береться з вершин меша).
 	if team == Team.CT or team == Team.T:
+		_apply_model_skin()
 		_apply_crouch_visuals(1.0)   # хітбокси підганяємо під модель у стоячій позі
-		Hitbox.fit_to_model(self, model_ct if team == Team.CT else model_t)
+		# Маска команди: у моделі є грані обох команд, хітбокс беремо тільки по гранях своєї.
+		Hitbox.fit_to_model(self, model, 1 if team == Team.CT else 0)
 		_apply_crouch_visuals(_crouch_k)
-	if model_ct:
-		model_ct.visible = (team == Team.CT) and not is_local
-	if model_t:
-		model_t.visible = (team == Team.T) and not is_local
+	if model:
+		model.visible = (team == Team.CT or team == Team.T) and not is_local
 	if arms_node:
 		arms_node.visible = is_local and (team == Team.T or team == Team.CT)
 		if arms_node.visible:
 			_apply_arms_skin()
+
+
+# Одна модель — два скіни. Текстура команди: колір граней своєї команди; грані, яких у команди
+# немає (шолом CT, пов'язка T...), на її текстурі прозорі й відкидаються (alpha scissor).
+func _apply_model_skin() -> void:
+	if model == null:
+		return
+	var mat: StandardMaterial3D = _skin_mats.get(team)
+	if mat == null:
+		mat = StandardMaterial3D.new()
+		mat.albedo_texture = SKIN_TEX_CT if team == Team.CT else SKIN_TEX_T
+		mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+		mat.alpha_scissor_threshold = 0.5
+		mat.roughness = 0.85
+		_skin_mats[team] = mat
+	for mi in model.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).set_surface_override_material(0, mat)
 
 
 # Підміняє меші/матеріали рук під команду. Вузол "arms" та його

@@ -6,6 +6,7 @@ extends Control
 const Kit := preload("res://скрипти/ui_kit.gd")
 
 signal play_pressed
+signal two_vs_two_pressed
 signal bot_pressed
 signal shop_pressed
 signal settings_pressed
@@ -57,7 +58,8 @@ func _build_left_panel() -> void:
 	box.add_theme_constant_override("separation", 18)
 	margin.add_child(box)
 
-	box.add_child(_menu_button("ГРАТИ", "primary", play_pressed))
+	box.add_child(_menu_button("1 × 1  —  CLASSIC", "primary", play_pressed))
+	box.add_child(_menu_button("2 × 2  —  WINGMAN", "ghost", two_vs_two_pressed))
 	box.add_child(_menu_button("ГРАТИ ПРОТИ БОТА", "ghost", bot_pressed))
 	box.add_child(_menu_button("МАГАЗИН", "ghost", shop_pressed))
 	box.add_child(_menu_button("НАЛАШТУВАННЯ", "ghost", settings_pressed))

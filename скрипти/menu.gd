@@ -26,6 +26,7 @@ var _settings_layer: CanvasLayer = null
 var _sensitivity_slider: HSlider = null
 var _scope_slider: HSlider = null
 var _searching: bool = false
+var _selected_mode: String = "1v1"
 var _attempts: int = 0
 
 
@@ -48,6 +49,7 @@ func _ready() -> void:
 	_make_new_ui()
 	Network.connection_succeeded.connect(_on_connected)
 	Network.connection_failed.connect(_on_connection_failed)
+	Matchmaker.search_progress.connect(_on_search_progress)
 
 	Economy.profile_updated.connect(_on_profile_updated)
 	Economy.shop_message.connect(func(text: String): _shop.set_message(text))
@@ -78,6 +80,7 @@ func _make_new_ui() -> void:
 	layer.add_child(_ui)
 	_ui.build(nick_input)
 	_ui.play_pressed.connect(_on_button_pressed)
+	_ui.two_vs_two_pressed.connect(_on_2v2_button_pressed)
 	_ui.bot_pressed.connect(_on_bot_button_pressed)
 	_ui.shop_pressed.connect(func(): _shop.open())
 	_ui.settings_pressed.connect(func(): _settings_layer.visible = true)
@@ -371,16 +374,25 @@ func _add_slider_row(parent: Control, title: String, min_v: float, max_v: float,
 
 # Кнопка "play": підключаємось до сервера і стаємо в чергу на матч 1х1.
 func _on_button_pressed() -> void:
+	_start_online_search("1v1")
+
+
+func _on_2v2_button_pressed() -> void:
+	_start_online_search("2v2")
+
+
+func _start_online_search(mode: String) -> void:
 	if _searching:
 		return
+	_selected_mode = mode
 	if nick_input:
 		_store_nick(nick_input.text)
 	_searching = true
 	_attempts = 0
 	_show_search(true)
 	if _online():
-		_set_status("Пошук суперника...")
-		Matchmaker.find_match()
+		_set_status("Пошук гравців для %s..." % ("2 × 2" if _selected_mode == "2v2" else "1 × 1"))
+		Matchmaker.find_match(_selected_mode)
 		return
 	_connect()
 
@@ -391,6 +403,13 @@ func _connect() -> void:
 	Network.join_game(ip_input.text.strip_edges())
 
 
+func _on_search_progress(found: int, total: int, mode: String) -> void:
+	if not _searching or mode != _selected_mode:
+		return
+	var mode_name := "2 × 2" if mode == "2v2" else "1 × 1"
+	_set_status("Знайдено гравців: %d з %d\nРежим: %s" % [found, total, mode_name])
+
+
 func _on_connected() -> void:
 	_bg_attempts = 0
 	Economy.send_hello()
@@ -399,8 +418,8 @@ func _on_connected() -> void:
 		Engine.remove_meta("pending_bot_win")
 	if not _searching:
 		return
-	_set_status("Пошук суперника...")
-	Matchmaker.find_match()
+	_set_status("Пошук гравців для %s..." % ("2 × 2" if _selected_mode == "2v2" else "1 × 1"))
+	Matchmaker.find_match(_selected_mode)
 
 
 func _on_connection_failed() -> void:

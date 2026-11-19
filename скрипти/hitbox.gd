@@ -66,7 +66,9 @@ static func build_for(player: CharacterBody3D) -> void:
 
 # Підганяє КОЖЕН хітбокс (голова, тулуб, ліва/права рука, ліва/права нога) під вершини моделі.
 # Викликати, коли відома модель гравця (після вибору команди).
-static func fit_to_model(player: Node3D, model: Node3D) -> void:
+# team_mask: -1 = усі грані; 0 = тільки грані команди T; 1 = тільки грані CT.
+# Модель має грані обох команд; маска лежить у UV2 (x = видима для T, y = видима для CT).
+static func fit_to_model(player: Node3D, model: Node3D, team_mask: int = -1) -> void:
 	if player == null or model == null:
 		return
 	var root := player.get_node_or_null("Hitboxes")
@@ -81,8 +83,7 @@ static func fit_to_model(player: Node3D, model: Node3D) -> void:
 		if m == null or m.mesh == null:
 			continue
 		var xf: Transform3D = to_player * m.global_transform
-		for v in m.mesh.get_faces():
-			verts.append(xf * v)
+		_collect_team_verts(m.mesh, xf, team_mask, verts)
 	if verts.is_empty():
 		return
 
@@ -135,6 +136,33 @@ static func fit_to_model(player: Node3D, model: Node3D) -> void:
 				box.size = size
 				(c as CollisionShape3D).shape = box
 				break
+
+
+# Додає вершини граней меша, видимих для команди (за маскою в UV2). Без маски — усі грані.
+static func _collect_team_verts(mesh: Mesh, xf: Transform3D, team_mask: int, out: PackedVector3Array) -> void:
+	if team_mask < 0:
+		for v in mesh.get_faces():
+			out.append(xf * v)
+		return
+	for s in mesh.get_surface_count():
+		var arr: Array = mesh.surface_get_arrays(s)
+		var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var uv2: PackedVector2Array = PackedVector2Array()
+		if arr[Mesh.ARRAY_TEX_UV2] != null:
+			uv2 = arr[Mesh.ARRAY_TEX_UV2]
+		var idx: PackedInt32Array = PackedInt32Array()
+		if arr[Mesh.ARRAY_INDEX] != null:
+			idx = arr[Mesh.ARRAY_INDEX]
+		var tri_count: int = (idx.size() if idx.size() > 0 else vs.size()) / 3
+		for t in tri_count:
+			var i0: int = idx[t * 3] if idx.size() > 0 else t * 3
+			if uv2.size() > i0:
+				var flag: float = uv2[i0].x if team_mask == 0 else uv2[i0].y
+				if flag < 0.5:
+					continue
+			for k in 3:
+				var vi: int = idx[t * 3 + k] if idx.size() > 0 else t * 3 + k
+				out.append(xf * vs[vi])
 
 
 # Вмикає/вимикає всі хітбокси гравця (наприклад, на час смерті).
