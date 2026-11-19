@@ -112,11 +112,27 @@ script = ExtResource("11_d2wvv")
 
 [node name="SpawnPoints" type="Node3D" parent="." unique_id=579596024]
 
-[node name="SpawnPoints1" type="Marker3D" parent="SpawnPoints" unique_id=642483691 groups=["spawn_points"]]
+[node name="DesertSpawns" type="Node3D" parent="SpawnPoints" unique_id=1181675238]
+
+[node name="SpawnPoints1" type="Marker3D" parent="SpawnPoints/DesertSpawns" unique_id=1095400174 groups=["spawn_points"]]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 1.451, 4.29845, 21.842)
 
-[node name="SpawnPoints2" type="Marker3D" parent="SpawnPoints" unique_id=833077653 groups=["spawn_points"]]
+[node name="SpawnPoints2" type="Marker3D" parent="SpawnPoints/DesertSpawns" unique_id=718830501 groups=["spawn_points"]]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.05920267, 3.7328682, -23.24076)
+
+[node name="WingmanSpawns" type="Node3D" parent="SpawnPoints" unique_id=1931200173]
+
+[node name="SpawnPoints1" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=642483691 groups=["spawn_points"]]
+transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 134.60812, 6.2029414, 31.490719)
+
+[node name="SpawnPoints2" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=833077653 groups=["spawn_points"]]
+transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, 149.34494, 4.902856, 32.676155)
+
+[node name="SpawnPoints3" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=1565977484]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20.775532, 5.460761, 157.70828)
+
+[node name="SpawnPoints4" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=1081839437]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32.09145, 5, 158)
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1102034679]
 spawn_path = NodePath("../players")
@@ -131,6 +147,7 @@ script = ExtResource("1_fjrip")
 player_scene = ExtResource("2_smehm")
 
 [node name="desert_courtyard_textured (1)" parent="MAP" unique_id=910608243 instance=ExtResource("4_dqkch")]
+visible = false
 
 [node name="wingman_oasis_large" parent="MAP" unique_id=1482375830 instance=ExtResource("5_tuyoq")]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
