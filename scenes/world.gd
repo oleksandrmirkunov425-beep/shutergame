@@ -12,7 +12,7 @@ extends Node3D
 @export_category("Map Settings")
 # true  — карта oasis і її точки спавну (WingmanSpawns) використовуються в УСІХ режимах (1×1, бот, 2×2).
 # false — як раніше: 1×1 і бот на desert (DesertSpawns), лише 2×2 на oasis.
-@export var oasis_in_all_modes: bool = true
+@export var oasis_in_all_modes: bool = false
 
 @export_category("Warmup Settings")
 @export var warmup_respawn_delay: float = 1.0
@@ -71,11 +71,17 @@ func _ready() -> void:
 	room_id = room.name.to_int()
 	room_peers = room.get_meta("peer_ids", [])
 	game_mode = str(room.get_meta("game_mode", "1v1"))
+	# Страховка: 4 гравці в кімнаті — це завжди 2×2 (спавни з WingmanSpawns),
+	# навіть якщо мета "game_mode" чомусь не дійшла. Рішення фіксуємо один раз,
+	# щоб воно не змінювалось, коли хтось вийде з матчу.
+	if room_peers.size() >= 4:
+		game_mode = "2v2"
 	_configure_map_and_spawns()
 	bot_match = bool(room.get_meta("bot_match", false))
 	players_node = room.get_node("players")
 
 	spawn_points = _collect_spawn_points()
+	print("[world] кімната %d: режим=%s, гравців=%d, група спавнів=%s, точок=%d" % [room_id, game_mode, room_peers.size(), _get_spawn_root().name if _get_spawn_root() else "—", spawn_points.size()])
 	if spawn_points.is_empty():
 		push_error("world.gd: не знайдено жодної точки спавну в SpawnPoints/DesertSpawns або SpawnPoints/WingmanSpawns!")
 
