@@ -82,6 +82,10 @@ func _ready() -> void:
 
 	spawn_points = _collect_spawn_points()
 	print("[world] кімната %d: режим=%s, гравців=%d, група спавнів=%s, точок=%d" % [room_id, game_mode, room_peers.size(), _get_spawn_root().name if _get_spawn_root() else "—", spawn_points.size()])
+	for i in spawn_points.size():
+		print("[world] точка #%d: %s  pos=%s" % [i, spawn_points[i].name, str(spawn_points[i].global_position)])
+	if game_mode == "2v2" and spawn_points.size() < 4:
+		push_warning("world.gd: режим 2v2, але точок спавну лише %d (потрібно 4). Перевір SpawnPoints/WingmanSpawns у player.tscn!" % spawn_points.size())
 	if spawn_points.is_empty():
 		push_error("world.gd: не знайдено жодної точки спавну в SpawnPoints/DesertSpawns або SpawnPoints/WingmanSpawns!")
 
@@ -448,6 +452,7 @@ func _spawn_index_for(id: int) -> int:
 
 func _spawn_or_respawn_player(id: int, spawn_index: int) -> void:
 	var spawn_point: Node3D = spawn_points[spawn_index % spawn_points.size()]
+	print("[spawn] кімната %d режим=%s oasis=%s id=%d команда=%s індекс=%d -> %s pos=%s" % [room_id, game_mode, str(_use_oasis), id, str(teams.get(id, "-")), spawn_index, spawn_point.name, str(spawn_point.global_position)])
 	if bot_match and id == BOT_ID:
 		var bot_existing := players_node.get_node_or_null(str(BOT_ID))
 		if bot_existing:
@@ -503,6 +508,7 @@ func _rpc_spawn_player(id: int, t: Transform3D) -> void:
 	if players_node.get_node_or_null(str(id)):
 		return  # вже існує (дублікат виклику) — нічого не робимо
 
+	print("[client spawn] режим=%s oasis=%s id=%d pos=%s" % [game_mode, str(_use_oasis), id, str(t.origin)])
 	var player := player_scene.instantiate()
 	player.name = str(id)
 	player.set_multiplayer_authority(id)
