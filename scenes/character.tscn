@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://bsk2bosi56aoh"]
 
 [ext_resource type="Script" uid="uid://cx1kxa4hgxsje" path="res://скрипти/player.gd" id="1_2cgup"]
-[ext_resource type="PackedScene" uid="uid://c4mmhlc7lhk2n" path="res://playersModels/ImageToStl.com_operative_ct1.fbx" id="2_2hyy3"]
+[ext_resource type="PackedScene" uid="uid://b3gl05k48ki4h" path="res://playersModels/player_split.glb" id="2_2hyy3"]
 [ext_resource type="Script" uid="uid://c6naqrl8wivpy" path="res://скрипти/weapon_switch.gd" id="2_a5ia6"]
 [ext_resource type="PackedScene" uid="uid://c56ays8ohviw7" path="res://weapons/AK47.fbx" id="4_2hyy3"]
 [ext_resource type="Texture2D" uid="uid://cfopy764jovhp" path="res://всяка фігня/ak-47.jpg" id="5_irmqu"]
@@ -11,7 +11,6 @@
 [ext_resource type="AudioStream" uid="uid://b643fy1fu5c0q" path="res://200.mp3" id="8_a5ia6"]
 [ext_resource type="PackedScene" uid="uid://bm5swxfj8wki5" path="res://butterfly_knife/titan_butterfly.glb" id="9_50cep"]
 [ext_resource type="PackedScene" uid="uid://fxnv3m5tbjkr" path="res://playersModels/terrorist_t1_arms.glb" id="11_7eonc"]
-[ext_resource type="PackedScene" uid="uid://t1b8yve1s8pp" path="res://playersModels/terrorist_t1 (2).glb" id="11_irmqu"]
 [ext_resource type="PackedScene" uid="uid://cmri5uwl82hbo" path="res://m4/m4a1_detailed_v3.glb" id="17_bj47h"]
 [ext_resource type="PackedScene" uid="uid://p7ox3scqk3rb" path="res://awp/awp.glb" id="17_cicko"]
 [ext_resource type="Animation" uid="uid://bltagd4ugsrc4" path="res://butterfly_knife/close.res" id="bf_close"]
@@ -142,7 +141,7 @@ tracks/2/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(-0.54529274, 2.1291904, 1.190876)]
+"values": [Vector3(-0.19470046, 1.8779845, 0.92318964)]
 }
 tracks/3/type = "value"
 tracks/3/imported = false
@@ -154,7 +153,7 @@ tracks/3/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(4.6564358e-10, -2.1537364, -0.008726645)]
+"values": [Vector3(-0.30173388, -1.7905872, -0.29353464)]
 }
 tracks/4/type = "value"
 tracks/4/imported = false
@@ -345,10 +344,10 @@ tracks/0/path = NodePath(".:position")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.29587454, 0.8333333, 0.8793741, 1.3),
+"times": PackedFloat32Array(0, 0.29587454, 0.8333333, 0.8793741, 1.26),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(0.393, -0.35, -0.38), Vector3(-0.05709839, -0.24671148, -0.5726757), Vector3(-0.05709839, -0.24671148, -0.5726757), Vector3(-0.0126924515, -0.2569018, -0.68224525), Vector3(0.393, -0.35, -0.38)]
+"values": [Vector3(0.393, -0.35, -0.38), Vector3(-0.05709839, -0.24671148, -0.5726757), Vector3(-0.05709839, -0.24671148, -0.5726757), Vector3(-0.0126924515, -0.2569018, -0.68224525), Vector3(0.39297867, -0.35776687, -0.3857479)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -357,10 +356,10 @@ tracks/1/path = NodePath(".:rotation")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0, 0.2951191, 0.81692404, 1.3),
+"times": PackedFloat32Array(0, 0.2951191, 0.81692404, 1.26),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(-0.043633223, -0.25830874, 0), Vector3(-0.04363322, 1.1951987, 4.7486165e-10), Vector3(-0.04363322, 1.1951987, 4.7486165e-10), Vector3(-0.043633223, -0.25830874, 0)]
+"values": [Vector3(-0.043633223, -0.25830874, 0), Vector3(-0.04363322, 1.1951987, 4.7486165e-10), Vector3(-0.04363322, 1.1951987, 4.7486165e-10), Vector3(-0.044198588, -0.25752908, 0.0008104994)]
 }
 tracks/2/type = "value"
 tracks/2/imported = false
@@ -393,10 +392,10 @@ tracks/4/path = NodePath("../../arms/terrorist_t1_arms/arm_R:position")
 tracks/4/interp = 1
 tracks/4/loop_wrap = true
 tracks/4/keys = {
-"times": PackedFloat32Array(0, 0.28196, 0.76666665, 0.86968726, 0.93949836, 1.1, 1.1666666),
+"times": PackedFloat32Array(0, 0.28196, 0.76666665, 0.86968726, 0.93949836, 1.0033332, 1.1666666),
 "transitions": PackedFloat32Array(1, 1, 1, 1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(-0.54529285, 1.6501694, 0.31167412), Vector3(-0.48652935, 1.3400469, 0.3131647), Vector3(-0.48652935, 1.3400469, 0.3131647), Vector3(-0.5307703, 1.37638, 0.27797794), Vector3(-0.5307703, 1.37638, 0.27797794), Vector3(-0.5712881, 1.4710331, 0.32216358), Vector3(-0.5712881, 1.6365156, 0.52817345)]
+"values": [Vector3(-0.19470046, 1.8779845, 0.92318964), Vector3(-0.48652935, 1.3400469, 0.3131647), Vector3(-0.48652935, 1.3400469, 0.3131647), Vector3(-0.5307703, 1.37638, 0.27797794), Vector3(-0.5307703, 1.37638, 0.27797794), Vector3(-0.5712881, 1.6365156, 0.52817345), Vector3(-0.19470046, 1.8779845, 0.92318964)]
 }
 tracks/5/type = "value"
 tracks/5/imported = false
@@ -405,10 +404,10 @@ tracks/5/path = NodePath("../../arms/terrorist_t1_arms/arm_R:rotation")
 tracks/5/interp = 1
 tracks/5/loop_wrap = true
 tracks/5/keys = {
-"times": PackedFloat32Array(0.28196, 0.76666665),
-"transitions": PackedFloat32Array(1, 1),
+"times": PackedFloat32Array(0.28196, 0.76666665, 1.1666666),
+"transitions": PackedFloat32Array(1, 1, 1),
 "update": 0,
-"values": [Vector3(0.20837058, -0.5724244, 0.27351573), Vector3(0.20837058, -0.5724244, 0.27351573)]
+"values": [Vector3(0.20837058, -0.5724244, 0.27351573), Vector3(0.20837058, -0.5724244, 0.27351573), Vector3(-0.30173388, -1.7905872, -0.29353464)]
 }
 tracks/6/type = "value"
 tracks/6/imported = false
@@ -1490,18 +1489,6 @@ tracks/1/keys = {
 "update": 0,
 "values": [Vector3(1.1363382, 0.6064854, 1.5478764)]
 }
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("../terrorist_t1:rotation")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0),
-"transitions": PackedFloat32Array(1),
-"update": 0,
-"values": [Vector3(0, -3.1415925, 0)]
-}
 
 [sub_resource type="Animation" id="Animation_bj47h"]
 resource_name = "die"
@@ -1530,27 +1517,12 @@ tracks/1/keys = {
 "update": 0,
 "values": [Vector3(0.15915775, -0.09795202, 0.65168), Vector3(1.734345, 0.6064856, 2.0865479)]
 }
-tracks/2/type = "value"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("../terrorist_t1:rotation")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.26666665),
-"transitions": PackedFloat32Array(1, 1),
-"update": 0,
-"values": [Vector3(0, 3.1415927, 0), Vector3(-1.5707964, 3.1415927, 0)]
-}
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_4lh0q"]
 _data = {
 &"RESET": SubResource("Animation_cicko"),
 &"die": SubResource("Animation_bj47h")
 }
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j60q2"]
-vertex_color_use_as_albedo = true
 
 [node name="player" type="CharacterBody3D" unique_id=603910083]
 transform = Transform3D(-0.99999994, 0, -8.742276e-08, 0, 0.99999976, 0, 8.742277e-08, 0, -0.9999998, 0, 3.1415927, 0)
@@ -1570,7 +1542,6 @@ script = ExtResource("2_a5ia6")
 
 [node name="AK47" parent="head/Camera3D" unique_id=1509668823 instance=ExtResource("4_2hyy3")]
 transform = Transform3D(0.14502347, 0.0016975376, -0.03963185, 0, 0.15220456, 0.0067738984, 0.038316853, -0.006424922, 0.15000053, 0.393, -0.35, -0.38)
-visible = false
 
 [node name="Cube_003" parent="head/Camera3D/AK47" index="1" unique_id=582209002]
 material_override = SubResource("StandardMaterial3D_f1ej7")
@@ -1621,7 +1592,7 @@ transform = Transform3D(-0.026938478, -1.6675733, -1.1038437, 1.7323383, -0.5710
 visible = false
 
 [node name="Knife_Root" parent="head/Camera3D/butterfly" index="0" unique_id=846286799]
-transform = Transform3D(0.99999964, 0.0006404211, -0.00042694647, -0.0006404205, 0.99999964, 1.7283048e-06, 0.0004269476, -1.4548792e-06, 0.9999995, -2.2071132e-05, -6.0869006e-05, 2.3482195e-05)
+transform = Transform3D(0.99999964, 0.0006404208, -0.00042694673, -0.0006404202, 0.99999964, 1.7283052e-06, 0.0004269479, -1.4548796e-06, 0.99999946, -2.2071132e-05, -6.0869006e-05, 2.3482195e-05)
 
 [node name="AnimationPlayer" parent="head/Camera3D/butterfly" index="1" unique_id=737131678]
 libraries/ = SubResource("AnimationLibrary_butterfly")
@@ -1636,6 +1607,7 @@ speed_scale = 1.5
 
 [node name="m4" parent="head/Camera3D" unique_id=852279871 instance=ExtResource("17_bj47h")]
 transform = Transform3D(0.28017193, 0, 1.26945, 0, 1.2999995, 0, -1.2694495, 0, 0.28017202, 0.4137262, -0.5474272, -0.4736753)
+visible = false
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="head/Camera3D/m4" unique_id=1699664572]
 libraries/ = SubResource("AnimationLibrary_8rpqn")
@@ -1654,7 +1626,7 @@ surface_material_override/0 = SubResource("StandardMaterial3D_50cep")
 surface_material_override/0 = SubResource("StandardMaterial3D_8yvht")
 
 [node name="arm_R" parent="head/arms/terrorist_t1_arms" index="1" unique_id=1324057370]
-transform = Transform3D(-0.55045986, -0.0048037954, -0.8348491, -0.008726536, 0.999963, 0, 0.83481616, 0.007285337, -0.5504816, -0.6254597, 1.224, 0.06400013)
+transform = Transform3D(-0.5504599, -0.004803795, -0.8348493, -0.008726537, 0.99996287, 0, 0.8348162, 0.007285336, -0.5504818, -0.6254597, 1.224, 0.06400013)
 surface_material_override/0 = SubResource("StandardMaterial3D_lagn4")
 
 [node name="hand_R" parent="head/arms/terrorist_t1_arms/arm_R" index="0" unique_id=1453831459]
@@ -1664,20 +1636,14 @@ surface_material_override/0 = SubResource("StandardMaterial3D_x8k1v")
 replication_config = SubResource("SceneReplicationConfig_2cgup")
 
 [node name="смерть" type="AnimationPlayer" parent="." unique_id=2059215493]
-root_node = NodePath("../operative_ct1")
+root_node = NodePath("../player_model")
 libraries/ = SubResource("AnimationLibrary_4lh0q")
 
 [node name="deathSound" type="AudioStreamPlayer3D" parent="." unique_id=2120044440]
 stream = ExtResource("8_a5ia6")
 
-[node name="operative_ct1" parent="." unique_id=951901837 instance=ExtResource("2_2hyy3")]
+[node name="player_model" parent="." unique_id=951901837 instance=ExtResource("2_2hyy3")]
 transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, 0, -0.85, 0)
-
-[node name="terrorist_t1" parent="." unique_id=1425196748 instance=ExtResource("11_irmqu")]
-transform = Transform3D(-1, 0, -1.5099582e-07, 0, 1.0000002, 0, 1.509958e-07, 0, -1.0000001, 0, -0.85, 0)
-
-[node name="terrorist_fine" parent="terrorist_t1" index="0" unique_id=319550286]
-surface_material_override/0 = SubResource("StandardMaterial3D_j60q2")
 
 [node name="deathcamera" type="Camera3D" parent="." unique_id=347886154]
 transform = Transform3D(0.58006775, -0.38501215, 0.717835, -0.0210117, 0.8738807, 0.48568666, -0.8142973, -0.2968141, 0.49882016, 1.1363382, 0.6064854, 1.5478764)
@@ -1688,5 +1654,4 @@ transform = Transform3D(0.58006775, -0.38501215, 0.717835, -0.0210117, 0.8738807
 [editable path="head/Camera3D/awp"]
 [editable path="head/Camera3D/m4"]
 [editable path="head/arms"]
-[editable path="operative_ct1"]
-[editable path="terrorist_t1"]
+[editable path="player_model"]

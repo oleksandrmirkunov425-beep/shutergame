@@ -23,6 +23,7 @@ var teams: Dictionary = {}  # player_id:int -> TEAM_CT / TEAM_T
 
 var room: Node                 # корінь кімнати (main)
 var room_id: int = -1
+var game_mode: String = "1v1"
 var room_peers: Array = []     # реальні peer_id цієї кімнати (бот не є мережевим peer)
 var bot_match: bool = false
 var _match_begun: bool = false
@@ -63,6 +64,8 @@ func _ready() -> void:
 	room = get_node("../..")
 	room_id = room.name.to_int()
 	room_peers = room.get_meta("peer_ids", [])
+	game_mode = str(room.get_meta("game_mode", "1v1"))
+	_configure_map_and_spawns()
 	bot_match = bool(room.get_meta("bot_match", false))
 	players_node = room.get_node("players")
 
@@ -107,6 +110,54 @@ func _ready() -> void:
 	# сервер викликає begin_match() (так жоден RPC не губиться до появи нод).
 	if not multiplayer.is_server():
 		Matchmaker.room_loaded.rpc_id(1, room_id)
+
+
+# У цій сцені зберігаються обидві карти. Режим кімнати визначає, яка активна.
+func _configure_map_and_spawns() -> void:
+	var desert := get_node_or_null("../desert_courtyard_textured (1)")
+	var oasis := get_node_or_null("../wingman_oasis_large")
+	var use_oasis := game_mode == "2v2"
+	_set_map_active(desert, not use_oasis)
+	_set_map_active(oasis, use_oasis)
+
+	var spawn_root := room.get_node("SpawnPoints")
+	if use_oasis and spawn_root.get_child_count() >= 2:
+		# Для 2×2 створюємо по дві близькі точки на кожній стороні карти.
+		# Перші дві точки вже є у сцені; додаткові розташовуються поруч із ними.
+		for source_name in ["SpawnPoints1", "SpawnPoints2"]:
+			var source := spawn_root.get_node_or_null(source_name) as Node3D
+			if source == null:
+				continue
+			var extra := Marker3D.new()
+			extra.name = source_name + "_TeamMate"
+			extra.transform = source.transform
+			extra.position.x += 2.5
+			spawn_root.add_child(extra)
+
+
+func _set_map_active(map_node: Node, active: bool) -> void:
+	if map_node == null:
+		return
+	map_node.visible = active
+	map_node.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
+	# Прихована 3D-карта все ще може блокувати гравців фізичними колізіями.
+	var stack: Array[Node] = [map_node]
+	while not stack.is_empty():
+		var current: Node = stack.pop_back()
+		if current is CollisionObject3D:
+			var body := current as CollisionObject3D
+			if active:
+				if body.has_meta("saved_collision_layer"):
+					body.collision_layer = int(body.get_meta("saved_collision_layer"))
+					body.collision_mask = int(body.get_meta("saved_collision_mask"))
+			else:
+				if not body.has_meta("saved_collision_layer"):
+					body.set_meta("saved_collision_layer", body.collision_layer)
+					body.set_meta("saved_collision_mask", body.collision_mask)
+				body.collision_layer = 0
+				body.collision_mask = 0
+		for child in current.get_children():
+			stack.append(child)
 
 
 # Тільки сервер: обидва гравці завантажили кімнату.
@@ -159,8 +210,12 @@ func _assign_teams() -> void:
 		return
 	var ids := room_peers.duplicate()
 	ids.shuffle()
-	for i in ids.size():
-		teams[ids[i]] = TEAM_CT if i % 2 == 0 else TEAM_T
+	if game_mode == "2v2":
+		for i in ids.size():
+			teams[ids[i]] = TEAM_CT if i < 2 else TEAM_T
+	else:
+		for i in ids.size():
+			teams[ids[i]] = TEAM_CT if i % 2 == 0 else TEAM_T
 
 
 # ---- розсилки тільки гравцям цієї кімнати ----
@@ -175,11 +230,11 @@ func _hud(new_state: int, value: int) -> void:
 func _scores_sync() -> void:
 	if bot_match:
 		_sync_scores(scores)
-		_sync_scoreboard(scores, nicks)
+		_sync_scoreboard(scores, nicks, teams)
 		return
 	for id in room_peers:
 		_sync_scores.rpc_id(id, scores)
-		_sync_scoreboard.rpc_id(id, scores, nicks)
+		_sync_scoreboard.rpc_id(id, scores, nicks, teams)
 
 
 func _on_player_connected(id: int) -> void:
@@ -196,8 +251,8 @@ func _on_player_connected(id: int) -> void:
 		if players_node.get_node_or_null(str(existing_id)):
 			_rpc_spawn_player.rpc_id(id, existing_id, _last_spawn_transform[existing_id])
 
-	var spawn_index: int = room_peers.find(id)
-	_spawn_or_respawn_player(id, max(spawn_index, 0))
+	var spawn_index: int = _spawn_index_for(id)
+	_spawn_or_respawn_player(id, spawn_index)
 
 
 # Викликається з Matchmaker, коли гравець вийшов (id вже прибраний з room_peers).
@@ -255,7 +310,8 @@ func _begin_round() -> void:
 	if bot_match:
 		ids.append(BOT_ID)
 	for i in ids.size():
-		_spawn_or_respawn_player(ids[i], i)
+		var spawn_index := 1 if bot_match and ids[i] == BOT_ID else _spawn_index_for(ids[i])
+		_spawn_or_respawn_player(ids[i], spawn_index)
 		alive_players[ids[i]] = true
 
 	# ...і на кілька секунд "заморожуємо": можна дивитись, але не рухатись і не стріляти.
@@ -298,6 +354,18 @@ func _set_frozen_all(value: bool) -> void:
 		var player := players_node.get_node_or_null(str(id))
 		if is_instance_valid(player) and _ready_peers.get(id, {}).has(id):
 			player.rpc_id(id, "_set_frozen", value)
+
+
+func _spawn_index_for(id: int) -> int:
+	if game_mode != "2v2":
+		return max(room_peers.find(id), 0)
+	var team := int(teams.get(id, TEAM_CT))
+	var teammates: Array = []
+	for peer_id in room_peers:
+		if int(teams.get(peer_id, TEAM_CT)) == team:
+			teammates.append(peer_id)
+	var teammate_slot := teammates.find(id)
+	return (0 if team == TEAM_CT else 2) + max(teammate_slot, 0)
 
 
 func _spawn_or_respawn_player(id: int, spawn_index: int) -> void:
@@ -458,9 +526,13 @@ func report_death(victim_id: int, attacker_id: int) -> void:
 
 	_scores_sync()
 
-	if attacker_id != -1 and scores.get(attacker_id, 0) >= wins_to_end_game:
-		_end_game(attacker_id)
-		return
+	if attacker_id != -1:
+		var winning_score := int(scores.get(attacker_id, 0))
+		if game_mode == "2v2":
+			winning_score = _team_score(int(teams.get(attacker_id, TEAM_CT)))
+		if winning_score >= wins_to_end_game:
+			_end_game(attacker_id)
+			return
 
 	state = State.ROUND_END
 	_round_end_left = int(round_end_delay)
@@ -477,10 +549,10 @@ func _schedule_warmup_respawn(victim_id: int) -> void:
 	if not room_peers.has(victim_id) and not (bot_match and victim_id == BOT_ID):
 		return
 
-	var spawn_index: int = room_peers.find(victim_id)
+	var spawn_index: int = _spawn_index_for(victim_id)
 	if bot_match and victim_id == BOT_ID:
 		spawn_index = 1
-	_spawn_or_respawn_player(victim_id, max(spawn_index, 0))
+	_spawn_or_respawn_player(victim_id, spawn_index)
 	alive_players[victim_id] = true
 
 
@@ -515,7 +587,10 @@ func _reward_winner(winner_id: int) -> void:
 	if _rewarded:
 		return
 	_rewarded = true
-	if int(scores.get(winner_id, 0)) < wins_to_end_game:
+	var winner_score := int(scores.get(winner_id, 0))
+	if game_mode == "2v2":
+		winner_score = _team_score(int(teams.get(winner_id, TEAM_CT)))
+	if winner_score < wins_to_end_game:
 		return
 	if bot_match:
 		# Офлайн-матч: сервера тут немає. Результат лишаємо в пам'яті, меню відправить його
@@ -525,9 +600,13 @@ func _reward_winner(winner_id: int) -> void:
 		return
 	if multiplayer.is_server():
 		var loser_score := 0
-		for id in scores.keys():
-			if id != winner_id:
-				loser_score = max(loser_score, int(scores[id]))
+		if game_mode == "2v2":
+			var losing_team := TEAM_T if int(teams.get(winner_id, TEAM_CT)) == TEAM_CT else TEAM_CT
+			loser_score = _team_score(losing_team)
+		else:
+			for id in scores.keys():
+				if id != winner_id:
+					loser_score = max(loser_score, int(scores[id]))
 		Economy.award_pvp_win(winner_id, loser_score)
 
 
@@ -563,18 +642,50 @@ func _submit_nick(nick: String) -> void:
 
 
 @rpc("call_local", "reliable")
-func _sync_scoreboard(new_scores: Dictionary, new_nicks: Dictionary) -> void:
+func _sync_scoreboard(new_scores: Dictionary, new_nicks: Dictionary, new_teams: Dictionary) -> void:
 	_known_nicks = new_nicks.duplicate()
 	if _scoreboard == null:
 		return
 	var my_id := multiplayer.get_unique_id()
-	var enemy_id := -1
-	for id in new_scores.keys():
-		if id != my_id:
-			enemy_id = id
-	_scoreboard.call("update_board",
-		str(new_nicks.get(my_id, "Player")), int(new_scores.get(my_id, 0)),
-		str(new_nicks.get(enemy_id, "Player")), int(new_scores.get(enemy_id, 0)))
+	if game_mode == "2v2":
+		var my_team := int(new_teams.get(my_id, TEAM_CT))
+		var enemy_team := TEAM_T if my_team == TEAM_CT else TEAM_CT
+		var my_ids: Array = []
+		var enemy_ids: Array = []
+		var my_total := 0
+		var enemy_total := 0
+		for id in new_scores.keys():
+			if int(new_teams.get(id, TEAM_CT)) == my_team:
+				my_ids.append(id)
+				my_total += int(new_scores[id])
+			else:
+				enemy_ids.append(id)
+				enemy_total += int(new_scores[id])
+		var my_names := PackedStringArray()
+		var enemy_names := PackedStringArray()
+		for id in my_ids:
+			my_names.append(str(new_nicks.get(id, "Player")))
+		for id in enemy_ids:
+			enemy_names.append(str(new_nicks.get(id, "Player")))
+		_scoreboard.call("update_board", " + ".join(my_names), my_total,
+			" + ".join(enemy_names), enemy_total)
+	else:
+		var enemy_id := -1
+		for id in new_scores.keys():
+			if id != my_id:
+				enemy_id = id
+		_scoreboard.call("update_board",
+			str(new_nicks.get(my_id, "Player")), int(new_scores.get(my_id, 0)),
+			str(new_nicks.get(enemy_id, "Player")), int(new_scores.get(enemy_id, 0)))
+
+
+func _team_score(team_id: int) -> int:
+	var total := 0
+	for id in scores.keys():
+		if int(teams.get(id, TEAM_CT)) == team_id:
+			total += int(scores[id])
+	return total
+
 
 
 # Нік гравця за id (для кіл-табу). Працює і на сервері, і на клієнті, і в грі з ботом.
