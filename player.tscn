@@ -1,13 +1,25 @@
 [gd_scene format=3 uid="uid://dxae4d305rxpb"]
 
 [ext_resource type="Script" uid="uid://bjov0l68jt3gf" path="res://scenes/world.gd" id="1_fjrip"]
-[ext_resource type="PackedScene" uid="uid://c7gm6r6biskpf" path="res://maps/desert_map/desert_courtyard_textured.glb" id="2_g2els"]
 [ext_resource type="PackedScene" uid="uid://bsk2bosi56aoh" path="res://scenes/character.tscn" id="2_smehm"]
+[ext_resource type="PackedScene" uid="uid://f111fms0jvox" path="res://maps/desert_map/desert_courtyard_textured.glb.glb" id="4_dqkch"]
+[ext_resource type="Texture2D" uid="uid://dgpwcsy5g7wg1" path="res://sky.png" id="5_qlg0r"]
+[ext_resource type="PackedScene" uid="uid://da0nigwrtokrr" path="res://maps/wingman_oasis/wingman_oasis_large.glb" id="5_tuyoq"]
 [ext_resource type="Script" uid="uid://b2cify15k7jyh" path="res://weapons/crosschair.gd" id="11_d2wvv"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_u0ya7"]
 font_size = 40
 outline_size = 4
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_ashne"]
+panorama = ExtResource("5_qlg0r")
+
+[sub_resource type="Sky" id="Sky_yex4w"]
+sky_material = SubResource("PanoramaSkyMaterial_ashne")
+
+[sub_resource type="Environment" id="Environment_dtglo"]
+background_mode = 2
+sky = SubResource("Sky_yex4w")
 
 [node name="main" type="Node3D" unique_id=188924596]
 
@@ -100,11 +112,27 @@ script = ExtResource("11_d2wvv")
 
 [node name="SpawnPoints" type="Node3D" parent="." unique_id=579596024]
 
-[node name="SpawnPoints1" type="Marker3D" parent="SpawnPoints" unique_id=642483691 groups=["spawn_points"]]
+[node name="DesertSpawns" type="Node3D" parent="SpawnPoints" unique_id=1181675238]
+
+[node name="1v1 spawn1" type="Marker3D" parent="SpawnPoints/DesertSpawns" unique_id=1095400174 groups=["spawn_points"]]
 transform = Transform3D(-4.371139e-08, 0, -1, 0, 1, 0, 1, 0, -4.371139e-08, 1.451, 4.29845, 21.842)
 
-[node name="SpawnPoints2" type="Marker3D" parent="SpawnPoints" unique_id=833077653 groups=["spawn_points"]]
+[node name="1v1 spawn2" type="Marker3D" parent="SpawnPoints/DesertSpawns" unique_id=718830501 groups=["spawn_points"]]
 transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.05920267, 3.7328682, -23.24076)
+
+[node name="WingmanSpawns" type="Node3D" parent="SpawnPoints" unique_id=1931200173]
+
+[node name="2v2 spawn 1" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=642483691 groups=["spawn_points"]]
+transform = Transform3D(-0.795237, 0, 0.606299, 0, 1, 0, -0.606299, 0, -0.795237, 134.608, 6.862097, 31.491)
+
+[node name="2v2 spawn 2" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=833077653 groups=["spawn_points"]]
+transform = Transform3D(-0.694754, 0, 0.719248, 0, 1, 0, -0.719248, 0, -0.694754, 149.345, 4.2597504, 32.676)
+
+[node name="2v2 spawn 3" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=1565977484 groups=["spawn_points"]]
+transform = Transform3D(0.699235, 0, -0.714891, 0, 1, 0, 0.714891, 0, 0.699235, 25.876175, 3.2573192, 148.49829)
+
+[node name="2v2 spawn 4" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=1081839437 groups=["spawn_points"]]
+transform = Transform3D(0.761337, 0, -0.648357, 0, 1, 0, 0.648357, 0, 0.761337, 44.4045, 1.26, 132.42873)
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1102034679]
 spawn_path = NodePath("../players")
@@ -118,4 +146,10 @@ transform = Transform3D(1, 0, 0, 0, -0.46716344, 0.884171, 0, -0.884171, -0.4671
 script = ExtResource("1_fjrip")
 player_scene = ExtResource("2_smehm")
 
-[node name="desert_courtyard_textured" parent="MAP" unique_id=1895263239 instance=ExtResource("2_g2els")]
+[node name="desert_courtyard_textured (1)" parent="MAP" unique_id=910608243 instance=ExtResource("4_dqkch")]
+
+[node name="wingman_oasis_large" parent="MAP" unique_id=1482375830 instance=ExtResource("5_tuyoq")]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=689066014]
+environment = SubResource("Environment_dtglo")
