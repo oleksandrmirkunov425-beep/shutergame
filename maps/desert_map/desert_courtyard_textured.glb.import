@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c7gm6r6biskpf"
-path="res://.godot/imported/desert_courtyard_textured.glb-b849346b1cb740a12d58542b4485325b.scn"
+uid="uid://biuhmymvqp71y"
+path="res://.godot/imported/desert_courtyard_textured (1).glb-9ab690fcf4f554666d194c72b1c5b7e1.scn"
 
 [deps]
 
-source_file="res://maps/desert_map/desert_courtyard_textured.glb"
-dest_files=["res://.godot/imported/desert_courtyard_textured.glb-b849346b1cb740a12d58542b4485325b.scn"]
+source_file="res://maps/desert_map/desert_courtyard_textured (1).glb"
+dest_files=["res://.godot/imported/desert_courtyard_textured (1).glb-9ab690fcf4f554666d194c72b1c5b7e1.scn"]
 
 [params]
 
