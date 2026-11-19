@@ -1,5 +1,5 @@
 extends Node
-# Підбір суперника 1х1 + кімнати.
+# Підбір матчів 1×1 та 2×2 + ізольовані кімнати.
 #
 # Один сервер (Render) тримає багато кімнат одночасно. Кожна кімната — це окремий
 # екземпляр main.tscn за шляхом /root/Matchmaker/Rooms/<room_id>. Той самий шлях
@@ -9,10 +9,12 @@ extends Node
 const GAME_SCENE := "res://scenes/main.tscn"
 const MENU_SCENE := "res://scenes/menu.tscn"
 
+signal search_progress(found: int, total: int, mode: String)
+
 var rooms_root: Node
 
 # --- тільки сервер ---
-var _queue: Array = []        # peer_id-и, що чекають суперника
+var _queues: Dictionary = {"1v1": [], "2v2": []}  # окремі черги режимів
 var _rooms: Dictionary = {}   # room_id -> {"peers": Array, "loaded": Dictionary, "node": Node, "started": bool}
 var _peer_room: Dictionary = {}  # peer_id -> room_id
 var _next_room_id: int = 1
@@ -89,8 +91,8 @@ func start_bot_match() -> void:
 # КЛІЄНТ: пошук гри
 # ------------------------------------------------------------------
 
-func find_match() -> void:
-	request_match.rpc_id(1)
+func find_match(mode: String = "1v1") -> void:
+	request_match.rpc_id(1, mode)
 
 
 func cancel_search() -> void:
@@ -100,7 +102,7 @@ func cancel_search() -> void:
 
 
 @rpc("authority", "reliable")
-func enter_room(room_id: int, peers: Array) -> void:
+func enter_room(room_id: int, peers: Array, mode: String = "1v1") -> void:
 	if multiplayer.is_server():
 		return
 	for c in rooms_root.get_children():
@@ -109,6 +111,7 @@ func enter_room(room_id: int, peers: Array) -> void:
 	var room: Node = load(GAME_SCENE).instantiate()
 	room.name = str(room_id)
 	room.set_meta("peer_ids", peers)
+	room.set_meta("game_mode", mode)
 
 	# Меню більше не потрібне (Node2D малювався б поверх 3D).
 	var cs := get_tree().current_scene
@@ -140,32 +143,66 @@ func leave_to_menu() -> void:
 # ------------------------------------------------------------------
 
 @rpc("any_peer", "reliable")
-func request_match() -> void:
+func request_match(mode: String = "1v1") -> void:
 	if not multiplayer.is_server():
 		return
+	if mode != "2v2":
+		mode = "1v1"
 	var id := multiplayer.get_remote_sender_id()
-	if _peer_room.has(id) or _queue.has(id):
+	if _peer_room.has(id):
 		return
-	_queue.append(id)
-	print("[matchmaker] ", id, " у черзі. Черга: ", _queue.size())
-	_try_pair()
+	for queue_mode in _queues.keys():
+		_queues[queue_mode].erase(id)
+	var queue: Array = _queues[mode]
+	if queue.has(id):
+		return
+	queue.append(id)
+	_queues[mode] = queue
+	print("[matchmaker] ", id, " у черзі ", mode, ". Черга: ", queue.size())
+	_try_pair(mode)
+	_notify_queue(mode)
 
 
 @rpc("any_peer", "reliable")
 func cancel_match() -> void:
 	if not multiplayer.is_server():
 		return
-	_queue.erase(multiplayer.get_remote_sender_id())
+	var id := multiplayer.get_remote_sender_id()
+	for mode in _queues.keys():
+		if _queues[mode].has(id):
+			_queues[mode].erase(id)
+			_notify_queue(str(mode))
 
 
-func _try_pair() -> void:
-	while _queue.size() >= 2:
-		var a: int = _queue.pop_front()
-		var b: int = _queue.pop_front()
-		_create_room([a, b])
+# Сервер повідомляє кожному гравцю в черзі поточний прогрес пошуку.
+func _notify_queue(mode: String) -> void:
+	if not multiplayer.is_server() or not _queues.has(mode):
+		return
+	var needed := 4 if mode == "2v2" else 2
+	var found: int = _queues[mode].size()
+	for peer_id in _queues[mode]:
+		update_search_progress.rpc_id(int(peer_id), found, needed, mode)
 
 
-func _create_room(peers: Array) -> void:
+@rpc("authority", "reliable")
+func update_search_progress(found: int, total: int, mode: String) -> void:
+	if multiplayer.is_server():
+		return
+	search_progress.emit(found, total, mode)
+
+
+func _try_pair(mode: String) -> void:
+	var needed := 4 if mode == "2v2" else 2
+	var queue: Array = _queues[mode]
+	while queue.size() >= needed:
+		var peers: Array = []
+		for i in needed:
+			peers.append(queue.pop_front())
+		_create_room(peers, mode)
+	_queues[mode] = queue
+
+
+func _create_room(peers: Array, mode: String = "1v1") -> void:
 	var room_id := _next_room_id
 	_next_room_id += 1
 	print("[matchmaker] кімната ", room_id, ": ", peers)
@@ -173,6 +210,7 @@ func _create_room(peers: Array) -> void:
 	var room: Node = load(GAME_SCENE).instantiate()
 	room.name = str(room_id)
 	room.set_meta("peer_ids", peers)  # той самий масив, що й у _rooms — оновлюється при виході гравця
+	room.set_meta("game_mode", mode)
 
 	_rooms[room_id] = {"peers": peers, "loaded": {}, "node": room, "started": false}
 	for p in peers:
@@ -180,10 +218,10 @@ func _create_room(peers: Array) -> void:
 	rooms_root.add_child(room)
 
 	for p in peers:
-		enter_room.rpc_id(p, room_id, peers)
+		enter_room.rpc_id(p, room_id, peers, mode)
 
 
-# Клієнт каже: "сцена кімнати в мене завантажена". Коли обидва готові — старт.
+# Клієнти повідомляють про завантаження; матч стартує, коли готові всі учасники кімнати.
 @rpc("any_peer", "reliable")
 func room_loaded(room_id: int) -> void:
 	if not multiplayer.is_server():
@@ -217,7 +255,10 @@ func close_room(room_id: int) -> void:
 func _on_peer_disconnected(id: int) -> void:
 	if not multiplayer.is_server():
 		return
-	_queue.erase(id)
+	for mode in _queues.keys():
+		if _queues[mode].has(id):
+			_queues[mode].erase(id)
+			_notify_queue(str(mode))
 	if not _peer_room.has(id):
 		return
 	var room_id: int = _peer_room[id]
