@@ -69,6 +69,10 @@ func _ready() -> void:
 	bot_match = bool(room.get_meta("bot_match", false))
 	players_node = room.get_node("players")
 
+	spawn_points = _collect_spawn_points()
+	if spawn_points.is_empty():
+		push_error("world.gd: не знайдено жодної точки спавну в SpawnPoints/DesertSpawns або SpawnPoints/WingmanSpawns!")
+
 	_countdown_timer = Timer.new()
 	_countdown_timer.wait_time = 1.0
 	add_child(_countdown_timer)
@@ -117,24 +121,42 @@ func _configure_map_and_spawns() -> void:
 	_set_map_active(desert, not use_oasis)
 	_set_map_active(oasis, use_oasis)
 
-	# Беремо маркери саме з групи точок активної карти.
-	# Desert: 2 точки (1 — команда CT, 2 — команда T).
-	# Wingman: 4 точки (1-2 — команда CT, 3-4 — команда T).
-	var spawn_root: Node = room.get_node("SpawnPoints")
-	var selected_spawns: Node = spawn_root.get_node(
-		"WingmanSpawns" if use_oasis else "DesertSpawns"
-	)
-	spawn_points.clear()
-	for child in selected_spawns.get_children():
-		if child is Node3D:
-			spawn_points.append(child)
+	var spawn_root := _get_spawn_root()
+	# Якщо в групі вже є 4+ точок (по 2 на команду) — додаткових не треба.
+	if use_oasis and spawn_root != null and spawn_root.get_child_count() >= 2 and spawn_root.get_child_count() < 4:
+		# Для 2×2 створюємо по дві близькі точки на кожній стороні карти.
+		# Перші дві точки вже є у сцені; додаткові розташовуються поруч із ними.
+		for source_name in ["SpawnPoints1", "SpawnPoints2"]:
+			var source := spawn_root.get_node_or_null(source_name) as Node3D
+			if source == null:
+				continue
+			var extra := Marker3D.new()
+			extra.name = source_name + "_TeamMate"
+			extra.transform = source.transform
+			extra.position.x += 2.5
+			spawn_root.add_child(extra)
 
-	var expected_count: int = 4 if use_oasis else 2
-	if spawn_points.size() < expected_count:
-		push_error(
-			"Для режиму %s потрібно %d точок спавну, знайдено %d."
-			% [game_mode, expected_count, spawn_points.size()]
-		)
+
+# Точки спавну лежать у підгрупах: SpawnPoints/DesertSpawns (1×1 і бот)
+# та SpawnPoints/WingmanSpawns (2×2). Раніше код брав прямих дітей SpawnPoints,
+# тобто самі групи (позиція 0,0,0) — через це гравці з'являлись під картою.
+func _get_spawn_root() -> Node3D:
+	var group_name := "WingmanSpawns" if game_mode == "2v2" else "DesertSpawns"
+	return room.get_node_or_null("SpawnPoints/" + group_name) as Node3D
+
+
+func _collect_spawn_points() -> Array[Node3D]:
+	var result: Array[Node3D] = []
+	var root := _get_spawn_root()
+	if root == null:
+		# Запасний варіант: старий плаский формат SpawnPoints/<Marker3D>.
+		root = room.get_node_or_null("SpawnPoints") as Node3D
+	if root == null:
+		return result
+	for child in root.get_children():
+		if child is Marker3D:
+			result.append(child as Node3D)
+	return result
 
 
 func _set_map_active(map_node: Node, active: bool) -> void:
@@ -359,19 +381,15 @@ func _set_frozen_all(value: bool) -> void:
 
 
 func _spawn_index_for(id: int) -> int:
-	var team := int(teams.get(id, TEAM_CT))
 	if game_mode != "2v2":
-		# У Desert 1×1: перша точка — CT, друга — T.
-		return 0 if team == TEAM_CT else 1
-
-	# У Wingman 2×2: точки 1-2 — CT, точки 3-4 — T.
-	# Порядок гравців усередині команди відповідає порядку room_peers.
+		return max(room_peers.find(id), 0)
+	var team := int(teams.get(id, TEAM_CT))
 	var teammates: Array = []
 	for peer_id in room_peers:
 		if int(teams.get(peer_id, TEAM_CT)) == team:
 			teammates.append(peer_id)
-	var teammate_slot: int = max(teammates.find(id), 0)
-	return (0 if team == TEAM_CT else 2) + teammate_slot
+	var teammate_slot := teammates.find(id)
+	return (0 if team == TEAM_CT else 2) + max(teammate_slot, 0)
 
 
 func _spawn_or_respawn_player(id: int, spawn_index: int) -> void:
