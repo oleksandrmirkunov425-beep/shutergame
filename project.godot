@@ -30,6 +30,7 @@ window/size/viewport_width=1900
 window/size/viewport_height=1000
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/vsync/vsync_mode=3
 
 [filesystem]
 
