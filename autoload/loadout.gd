@@ -3,7 +3,7 @@ extends Node
 # щоб гра знала, що показувати (в т.ч. у матчі проти бота без сервера).
 
 const SAVE_PATH := "user://loadout.cfg"
-const KNIVES: Array = ["karambit", "bolisong", "butterfly"]
+const KNIVES: Array = ["karambit", "bolisong", "butterfly", "m9"]
 const AK_SKINS: Array = ["ak47_samurai"]   # "" = стандартний АК
 const AWP_SKINS: Array = ["awp_samurai"]   # "" = стандартна AWP
 

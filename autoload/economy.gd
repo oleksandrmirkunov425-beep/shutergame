@@ -19,8 +19,9 @@ const KNIVES := {
 	"bolisong":  {"name": "Метелик",   "price": 0},
 	"karambit":  {"name": "Керамбіт",  "price": 300},
 	"butterfly": {"name": "Butterfly", "price": 500},
+	"m9":        {"name": "M9 Bayonet", "price": 1000},
 }
-const KNIFE_ORDER := ["bolisong", "karambit", "butterfly"]
+const KNIFE_ORDER := ["bolisong", "karambit", "butterfly", "m9"]
 const DEFAULT_KNIFE := "bolisong"
 
 # ---------- Скіни зброї ----------

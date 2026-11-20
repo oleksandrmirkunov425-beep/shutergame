@@ -183,6 +183,8 @@ func _ready() -> void:
 		return
 
 	camera.current = true
+	camera.make_current()
+	print("[player] local camera current=", camera.current, " player_id=", name, " position=", global_position)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_hud = CombatHud.new()
 	_hud.name = "CombatHud"

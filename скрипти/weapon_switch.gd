@@ -6,6 +6,8 @@ extends Camera3D
 @onready var bolisong_anim: AnimationPlayer = bolisong.get_node_or_null("AnimationPlayer") if bolisong else null
 @onready var butterfly: Node3D = get_node_or_null("butterfly")
 @onready var butterfly_anim: AnimationPlayer = _get_anim_player(butterfly)
+@onready var m9: Node3D = get_node_or_null("m9bayonet")
+@onready var m9_anim: AnimationPlayer = m9.get_node_or_null("AnimationPlayer") as AnimationPlayer if m9 else null
 @onready var ak47_anim: AnimationPlayer = $AK47/доставання
 @onready var ak47_reload_anim: AnimationPlayer = $AK47/перезарядка
 @onready var ak47_inspect_anim: AnimationPlayer = $AK47/осмотр
@@ -239,11 +241,14 @@ var is_drawing: bool = false
 var is_attacking: bool = false
 var is_inspecting: bool = false
 
-# Який ніж вибрано: "karambit", "bolisong" або "butterfly" (синхронізується між гравцями)
+# Який ніж вибрано: "karambit", "bolisong", "butterfly" або "m9" (синхронізується між гравцями)
 var knife_skin: String = "karambit"
 var _bolisong_base_rot: Vector3 = Vector3.ZERO
 var _butterfly_base_rot: Vector3 = Vector3.ZERO
 var _butterfly_base_pos: Vector3 = Vector3.ZERO
+var _m9_base_rot: Vector3 = Vector3.ZERO
+var _m9_pose_base: Array = []
+var _m9_action_id: int = 0
 # Лічильник осмотрів: старий таймер не має права зупиняти новий осмотр.
 var _butterfly_inspect_id: int = 0
 # Лічильник перемикань зброї: таймер старого перемикання не має права чіпати новий стан.
@@ -287,6 +292,10 @@ func _ready() -> void:
 	_capture_knife_inspect_base()
 	_bolisong_pose_base = _capture_pose_base(bolisong_anim)
 	_butterfly_pose_base = _capture_pose_base(butterfly_anim)
+	_m9_pose_base = _capture_pose_base(m9_anim)
+	if m9:
+		_m9_base_rot = m9.rotation
+		_setup_m9_idle()
 	if bolisong:
 		_bolisong_base_rot = bolisong.rotation
 	if butterfly:
@@ -530,6 +539,7 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 		if bolisong_anim:
 			bolisong_anim.stop()
 		_butterfly_cancel()
+		_m9_stop()
 		is_inspecting = false
 
 	if weapon == Weapon.AK47:
@@ -542,6 +552,7 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 			_restore_pose_base(_bolisong_pose_base)
 		_butterfly_cancel()
 		_restore_pose_base(_butterfly_pose_base)
+		_m9_stop()
 		if ak47_anim:
 			ak47_anim.stop()
 			ak47_anim.play("knife1_Switch")
@@ -569,6 +580,11 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 			_butterfly_cancel()
 			draw_player = butterfly_anim
 			draw_name = "Draw" if butterfly_anim.has_animation("Draw") else _find_anim(butterfly_anim, ["draw", "switch", "equip", "deploy"])
+		elif _use_m9():
+			# Діставання M9: анімація "draw" (рука й ніж піднімаються), далі — "idle"
+			_m9_stop()
+			draw_player = m9_anim
+			draw_name = _find_anim(m9_anim, ["draw", "switch", "equip", "deploy"])
 		if draw_player and draw_name != "" and draw_player.has_animation(draw_name):
 			draw_player.stop()
 			# Скидаємо руку/ніж у початкову позу, щоб Draw стартував так само, як і вперше.
@@ -576,6 +592,8 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 				_restore_pose_base(_bolisong_pose_base)
 			elif draw_player == butterfly_anim:
 				_restore_pose_base(_butterfly_pose_base)
+			elif draw_player == m9_anim:
+				_restore_pose_base(_m9_pose_base)
 			draw_player.play(draw_name)
 			draw_player.seek(0.0, true)
 			var draw_length: float = draw_player.current_animation_length / maxf(absf(draw_player.speed_scale), 0.01)
@@ -590,6 +608,8 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 			if draw_player == butterfly_anim:
 				# Idle вмикаємо щойно закінчився Draw — на всіх клієнтах, не лише в authority.
 				_butterfly_play_idle()
+			elif draw_player == m9_anim:
+				_m9_play_idle()
 		if _has_authority() and ammo_label:
 			ammo_label.text = ""
 	elif weapon == Weapon.SNIPER:
@@ -607,6 +627,7 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 			_restore_pose_base(_bolisong_pose_base)
 		_butterfly_cancel()
 		_restore_pose_base(_butterfly_pose_base)
+		_m9_stop()
 		var draw_length: float = _sniper_play(SNIPER_ANIM_DRAW)
 		if _has_authority():
 			is_drawing = true
@@ -631,6 +652,7 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 			_restore_pose_base(_bolisong_pose_base)
 		_butterfly_cancel()
 		_restore_pose_base(_butterfly_pose_base)
+		_m9_stop()
 		if _has_authority():
 			_update_ammo_hud()
 		# Діставання M4: анімація "draw" (зброя й руки піднімаються знизу в позу «тримаю»).
@@ -660,6 +682,9 @@ func _knife_attack_rpc() -> void:
 		return
 	if _use_butterfly():
 		_butterfly_attack()
+		return
+	if _use_m9():
+		_m9_attack()
 		return
 
 	if not knife_attack_anim:
@@ -709,6 +734,9 @@ func _inspect_weapon_rpc() -> void:
 		return
 	if current_weapon == Weapon.KNIFE and _use_butterfly():
 		_butterfly_inspect()
+		return
+	if current_weapon == Weapon.KNIFE and _use_m9():
+		_m9_inspect()
 		return
 	if current_weapon == Weapon.KNIFE:
 		_knife_inspect()
@@ -1765,11 +1793,15 @@ func _use_butterfly() -> bool:
 	return knife_skin == "butterfly" and butterfly != null and butterfly_anim != null
 
 
+func _use_m9() -> bool:
+	return knife_skin == "m9" and m9 != null and m9_anim != null
+
+
 func _apply_visibility() -> void:
 	# Моделі від першої особи (АК, ножі, AWP, руки) бачить тільки їхній власник.
 	# У чужого клієнта копія цього гравця має їх повністю сховані, інакше вони «висять у повітрі» біля нього.
 	if not _has_authority():
-		for item in [ak47, knife, bolisong, butterfly, sniper_holder, m4_holder]:
+		for item in [ak47, knife, bolisong, butterfly, m9, sniper_holder, m4_holder]:
 			if item:
 				item.visible = false
 		if player_body != null:
@@ -1783,12 +1815,15 @@ func _apply_visibility() -> void:
 	var is_m4: bool = (current_weapon == Weapon.M4)
 	var bf: bool = knife_skin == "bolisong" and bolisong != null
 	var bt: bool = knife_skin == "butterfly" and butterfly != null
+	var m9v: bool = knife_skin == "m9" and m9 != null
 	ak47.visible = is_ak
-	knife.visible = is_kn and not bf and not bt
+	knife.visible = is_kn and not bf and not bt and not m9v
 	if bolisong:
 		bolisong.visible = is_kn and bf
 	if butterfly:
 		butterfly.visible = is_kn and bt
+	if m9:
+		m9.visible = is_kn and m9v
 	# Модель снайперки ховаємо, поки дивимось крізь приціл.
 	if sniper_holder:
 		sniper_holder.visible = is_sn and sniper_scope_level == 0
@@ -1891,7 +1926,7 @@ func announce_knife_skin() -> void:
 
 @rpc("any_peer", "call_local", "reliable")
 func _set_knife_skin_rpc(skin: String) -> void:
-	if skin != "karambit" and skin != "bolisong" and skin != "butterfly":
+	if skin != "karambit" and skin != "bolisong" and skin != "butterfly" and skin != "m9":
 		return
 	knife_skin = skin
 	_apply_visibility()
@@ -2738,3 +2773,62 @@ func _sync_viewmodel_camera() -> void:
 		return
 	var gt: Transform3D = global_transform
 	_vm_camera.global_transform = Transform3D(gt.basis.orthonormalized(), gt.origin)
+
+
+# ------------------------------------------------------------------
+# M9 BAYONET: draw (діставання) + idle + view (осмотр, F) + короткий помах при ударі
+# ------------------------------------------------------------------
+func _setup_m9_idle() -> void:
+	if m9_anim and m9_anim.has_animation("idle"):
+		m9_anim.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
+
+
+func _m9_play_idle() -> void:
+	if m9_anim and _use_m9() and current_weapon == Weapon.KNIFE and m9_anim.has_animation("idle"):
+		m9_anim.play("idle", 0.15)
+
+
+# Зупиняє анімації M9 і повертає ніж та руки в базову позу.
+func _m9_stop() -> void:
+	_m9_action_id += 1
+	if m9_anim:
+		m9_anim.stop()
+		_restore_pose_base(_m9_pose_base)
+	if m9:
+		m9.rotation = _m9_base_rot
+
+
+func _m9_inspect() -> void:
+	var anim_name: String = _find_anim(m9_anim, ["view", "inspect"])
+	if anim_name == "":
+		push_warning("У m9bayonet/AnimationPlayer немає анімації view!")
+		return
+	_m9_stop()
+	var my_id: int = _m9_action_id
+	m9_anim.play(anim_name)
+	if _has_authority():
+		is_inspecting = true
+	var duration: float = m9_anim.get_animation(anim_name).length / maxf(absf(m9_anim.speed_scale), 0.01)
+	await get_tree().create_timer(duration).timeout
+	if my_id != _m9_action_id:
+		return
+	if _has_authority():
+		is_inspecting = false
+	_m9_play_idle()
+
+
+# Окремої анімації удару в моделі немає — короткий помах.
+func _m9_attack() -> void:
+	if _has_authority():
+		is_attacking = true
+		is_inspecting = false
+	_m9_stop()
+	var my_id: int = _m9_action_id
+	_m9_play_idle()
+	var t := create_tween()
+	t.tween_property(m9, "rotation:x", _m9_base_rot.x + deg_to_rad(-40.0), 0.1)
+	t.tween_property(m9, "rotation:x", _m9_base_rot.x, 0.2)
+	if _has_authority():
+		await get_tree().create_timer(0.3).timeout
+		if my_id == _m9_action_id:
+			is_attacking = false

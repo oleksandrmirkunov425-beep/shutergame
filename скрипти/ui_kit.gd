@@ -493,7 +493,9 @@ class TerroristStage extends SubViewportContainer:
 			_rifle = _build_rifle()   # запасний воксельний АК, якщо моделі нема в проєкті
 		_rifle.position = Vector3(0.05, 1.0, 0.31)
 		_rifle.rotation = Vector3(0.0, -0.3, 0.12)
-		_body.add_child(_rifle)
+		# _build_real_rifle() уже додає root до _body; fallback-модель ще не має батька.
+		if _rifle.get_parent() == null:
+			_body.add_child(_rifle)
 		set_ak_skin(_ak_skin)
 		_pivot.rotation.y = -0.35
 
@@ -736,6 +738,7 @@ const MODEL_KEYWORDS := {
 	"bolisong": ["bolisong", "balisong"],
 	"karambit": ["karambit", "karanbit"],
 	"butterfly": ["butterfly"],
+	"m9": ["m9_bayonet", "m9bayonet"],
 }
 static var _scan_done := false
 static var _found: Array = []
@@ -801,7 +804,7 @@ static func find_model(key: String) -> PackedScene:
 
 # ---------------------------------------------------------------- превʼю предмета
 # skin_id != "" -> реальний малюнок скіна з гри; інакше 3D-модель з проєкту; якщо моделі немає — силует.
-# model_key: "ak47" / "awp" / id ножа ("bolisong", "karambit", "butterfly").
+# model_key: "ak47" / "awp" / id ножа ("bolisong", "karambit", "butterfly", "m9").
 static func make_preview(model_key: String, skin_id: String, steel: Color = Color("8e98ab"), allow_3d: bool = true, spin: bool = false) -> Control:
 	# AWP зі скіном: показуємо справжню 3D-модель гри зі скіном на ній, а не плоский арт у стилі CS2.
 	# Вимкнути/додати інші зброї: SKIN_ON_MODEL.

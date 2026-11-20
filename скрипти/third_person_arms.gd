@@ -26,6 +26,7 @@ const WEAPON_SCENES := {
 const KNIFE_MESH := preload("res://karanbit.obj")
 const BOLISONG_SCENE: PackedScene = preload("res://bolisong_knife/ImageToStl.com_titan_balisong_v4.fbx")
 const BUTTERFLY_SCENE: PackedScene = preload("res://butterfly_knife/titan_butterfly.glb")
+const M9_SCENE: PackedScene = preload("res://m9_bayonet_knife/m9_bayonet_lowpoly_v4.glb")
 
 # Базові пози. Усе — відносно погляду гравця (вузол head).
 #  r / l   : куди дивиться права / ліва рука, Vector2(нахил, поворот) у градусах.
@@ -101,6 +102,7 @@ func _ready() -> void:
 	# щоб інші гравці бачили той самий тип ножа, що й власник.
 	_add_knife_variant("bolisong", BOLISONG_SCENE)
 	_add_knife_variant("butterfly", BUTTERFLY_SCENE)
+	_add_knife_variant("m9", M9_SCENE)
 
 	on_switch(1)   # поки невідомо, що в руках — ніж
 
@@ -216,7 +218,7 @@ func _add_knife_variant(skin: String, packed: PackedScene) -> void:
 
 
 func set_knife_skin(skin: String) -> void:
-	if skin != "karambit" and skin != "bolisong" and skin != "butterfly":
+	if skin != "karambit" and skin != "bolisong" and skin != "butterfly" and skin != "m9":
 		return
 	_knife_skin = skin
 	_update_knife_visibility()
