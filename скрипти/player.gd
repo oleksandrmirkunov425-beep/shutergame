@@ -419,8 +419,18 @@ func clamp_max_velocity() -> void:
 
 # ---- Здоров'я / урон / смерть / респаун (керується world.gd через раунди) ----
 
+# true, якщо attacker_id — тіммейт цього гравця (по своїх урону немає).
+func is_friendly_fire(attacker_id: int) -> bool:
+	var world := _get_world()
+	if world == null or not world.has_method("are_teammates"):
+		return false
+	return world.are_teammates(name.to_int(), attacker_id)
+
+
 func take_damage(amount: float, attacker_id: int = -1) -> void:
 	if is_dead:
+		return
+	if is_friendly_fire(attacker_id):
 		return
 	if bool(get_meta("is_bot", false)):
 		_apply_damage(amount, attacker_id)
@@ -444,6 +454,8 @@ func _set_spawn_transform(t: Transform3D) -> void:
 
 func _apply_damage(amount: float, attacker_id: int = -1) -> void:
 	if is_dead:
+		return
+	if is_friendly_fire(attacker_id):
 		return
 
 	last_attacker_id = attacker_id

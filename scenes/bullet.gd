@@ -93,7 +93,8 @@ func _on_hit(result: Dictionary) -> void:
 	if multiplayer.get_unique_id() == shooter_id:
 		if target and target.has_method("take_damage"):
 			# Не наносимо урон і не показуємо попап, якщо ціль вже мертва
-			if not ("is_dead" in target and target.is_dead):
+			if not ("is_dead" in target and target.is_dead) \
+					and not (target.has_method("is_friendly_fire") and target.is_friendly_fire(shooter_id)):
 				var final_damage: float = damage * multiplier
 				target.take_damage(final_damage, shooter_id)
 				_spawn_damage_popup(target, final_damage)

@@ -54,6 +54,7 @@ var _last_spawn_transform: Dictionary = {}  # player_id:int -> Transform3D
 var nicks: Dictionary = {}
 # Ніки, які клієнт отримав від сервера разом з рахунком (на клієнті `nicks` порожній).
 var _known_nicks: Dictionary = {}
+var _known_teams: Dictionary = {}   # команди, які сервер надіслав клієнтам
 var _scoreboard: Control = null
 
 var _countdown_timer: Timer
@@ -617,6 +618,17 @@ func _report_death_rpc(victim_id: int, attacker_id: int) -> void:
 		report_death(victim_id, attacker_id)
 
 
+# true, якщо обидва гравці в одній команді (для блокування урону по своїх).
+# На сервері / у грі з ботом беремо teams, на клієнті — те, що надіслав сервер.
+func are_teammates(a: int, b: int) -> bool:
+	if a == b or a == -1 or b == -1:
+		return false
+	var t: Dictionary = teams if not teams.is_empty() else _known_teams
+	if not t.has(a) or not t.has(b):
+		return false
+	return int(t[a]) == int(t[b])
+
+
 func report_death(victim_id: int, attacker_id: int) -> void:
 	if not alive_players.get(victim_id, false):
 		return
@@ -630,17 +642,33 @@ func report_death(victim_id: int, attacker_id: int) -> void:
 	if state != State.PLAYING:
 		return
 
-	if attacker_id != -1 and attacker_id != victim_id and scores.has(attacker_id):
-		scores[attacker_id] += 1
+	# Раунд триває, поки в команді загиблого лишається хоч один живий гравець.
+	var victim_team := int(teams.get(victim_id, -1))
+	if victim_team != -1:
+		for id in alive_players.keys():
+			if alive_players[id] and int(teams.get(id, -2)) == victim_team:
+				return
+
+	# Уся команда загинула: очко отримує той, хто добив останнього.
+	var scorer := attacker_id
+	if scorer == -1 or scorer == victim_id or not scores.has(scorer) \
+			or int(teams.get(scorer, -1)) == victim_team:
+		scorer = -1
+		for id in alive_players.keys():
+			if alive_players[id] and teams.has(id) and int(teams[id]) != victim_team and scores.has(id):
+				scorer = id
+				break
+	if scorer != -1:
+		scores[scorer] += 1
 
 	_scores_sync()
 
-	if attacker_id != -1:
-		var winning_score := int(scores.get(attacker_id, 0))
+	if scorer != -1:
+		var winning_score := int(scores.get(scorer, 0))
 		if game_mode == "2v2":
-			winning_score = _team_score(int(teams.get(attacker_id, TEAM_CT)))
+			winning_score = _team_score(int(teams.get(scorer, TEAM_CT)))
 		if winning_score >= wins_to_end_game:
-			_end_game(attacker_id)
+			_end_game(scorer)
 			return
 
 	state = State.ROUND_END
@@ -753,6 +781,7 @@ func _submit_nick(nick: String) -> void:
 @rpc("call_local", "reliable")
 func _sync_scoreboard(new_scores: Dictionary, new_nicks: Dictionary, new_teams: Dictionary) -> void:
 	_known_nicks = new_nicks.duplicate()
+	_known_teams = new_teams.duplicate()
 	if _scoreboard == null:
 		return
 	var my_id := multiplayer.get_unique_id()

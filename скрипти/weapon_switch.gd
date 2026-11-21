@@ -1210,6 +1210,8 @@ func _fire_hitscan(from: Vector3, direction: Vector3, shooter_id: int, damage: f
 		return
 	if "is_dead" in target and target.is_dead:
 		return
+	if target.has_method("is_friendly_fire") and target.is_friendly_fire(shooter_id):
+		return   # по тіммейтах стріляти безглуздо: урону й попапа немає
 
 	var final_damage: float
 	if current_weapon == Weapon.M4:
