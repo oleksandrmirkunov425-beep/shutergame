@@ -147,8 +147,9 @@ script = ExtResource("1_fjrip")
 player_scene = ExtResource("2_smehm")
 
 [node name="desert_courtyard_textured (1)" parent="MAP" unique_id=910608243 instance=ExtResource("4_dqkch")]
+visible = false
 
-[node name="wingman_oasis_large" parent="MAP" unique_id=1482375830 instance=ExtResource("5_tuyoq")]
+[node name="wingman_oasis_large" parent="MAP" unique_id=1786158097 instance=ExtResource("5_tuyoq")]
 transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=689066014]
