@@ -6,6 +6,7 @@ extends Node3D
 @export var countdown_seconds: int = 5
 @export var round_end_delay: float = 3.0   # скільки секунд після смерті до нового раунду
 @export var freeze_seconds: int = 3          # скільки секунд на старті раунду гравці стоять (3-2-1)
+@export var round_time_seconds: int = 60     # ліміт часу на раунд; після нього раунд — нічия (0 = без ліміту)
 @export var wins_to_end_game: int = 10
 @export var game_over_delay: float = 3.0
 
@@ -24,6 +25,8 @@ const TEAM_CT := 0
 const TEAM_T := 1
 const BOT_ID := 2
 const BOT_AI_SCRIPT := preload("res://scenes/bot_ai.gd")
+const BOMB_SYSTEM_SCRIPT := preload("res://scenes/bomb_system.gd")
+var bomb: Node = null   # BombSystem — тільки в 2×2 (не з ботом)
 var teams: Dictionary = {}  # player_id:int -> TEAM_CT / TEAM_T
 
 var room: Node                 # корінь кімнати (main)
@@ -62,6 +65,8 @@ var _round_tick_timer: Timer      # щосекунди рахує час до н
 var _round_end_left: int = 0
 var _freeze_timer: Timer          # відлік 3-2-1 на старті раунду (гравці стоять)
 var _freeze_left: int = 0
+var _play_timer: Timer           # щосекунди відлічує час раунду (60 с)
+var _play_left: int = 0
 var _round_end_timer: Timer
 var _game_over_timer: Timer
 
@@ -105,6 +110,11 @@ func _ready() -> void:
 	add_child(_freeze_timer)
 	_freeze_timer.timeout.connect(_on_freeze_tick)
 
+	_play_timer = Timer.new()
+	_play_timer.wait_time = 1.0
+	add_child(_play_timer)
+	_play_timer.timeout.connect(_on_play_tick)
+
 	_round_end_timer = Timer.new()
 	_round_end_timer.wait_time = round_end_delay
 	_round_end_timer.one_shot = true
@@ -116,6 +126,13 @@ func _ready() -> void:
 	_game_over_timer.one_shot = true
 	add_child(_game_over_timer)
 	_game_over_timer.timeout.connect(_on_game_over_timeout)
+
+	# Бомба: тільки в 2×2 проти людей.
+	if game_mode == "2v2" and not bot_match:
+		bomb = BOMB_SYSTEM_SCRIPT.new()
+		bomb.name = "BombSystem"
+		add_child(bomb)
+		bomb.call("setup", self)
 
 	# Клієнт: малюємо табло з ніками і надсилаємо серверу свій нік.
 	if not multiplayer.is_server() or bot_match:
@@ -373,6 +390,9 @@ func on_peer_left(id: int) -> void:
 	_round_end_timer.stop()
 	_round_tick_timer.stop()
 	_freeze_timer.stop()
+	_play_timer.stop()
+	if bomb:
+		bomb.call("reset")
 	if _match_begun and room_peers.size() == 1:
 		_end_game(room_peers[0])  # суперник вийшов — технічна перемога
 	else:
@@ -402,6 +422,9 @@ func _on_countdown_tick() -> void:
 
 func _begin_round() -> void:
 	_round_tick_timer.stop()
+	_play_timer.stop()
+	if bomb:
+		bomb.call("reset")
 	_scores_sync()
 
 	# Всіх гравців ставимо на спавни...
@@ -418,6 +441,8 @@ func _begin_round() -> void:
 
 
 func _start_freeze() -> void:
+	if bomb:
+		bomb.call("assign_carrier")
 	state = State.FREEZE
 	_freeze_left = freeze_seconds
 	_set_frozen_all(true)
@@ -436,7 +461,87 @@ func _on_freeze_tick() -> void:
 	_freeze_timer.stop()
 	_set_frozen_all(false)
 	state = State.PLAYING
-	_hud(State.PLAYING, 0)
+	_play_left = round_time_seconds
+	_hud(State.PLAYING, _play_left)
+	if round_time_seconds > 0:
+		_play_timer.start()
+
+
+# Тільки сервер: щосекунди зменшує час раунду; на нулі — нічия.
+func _on_play_tick() -> void:
+	if state != State.PLAYING:
+		_play_timer.stop()
+		return
+	_play_left -= 1
+	if _play_left > 0:
+		_hud(State.PLAYING, _play_left)
+	else:
+		_play_timer.stop()
+		_on_round_time_up()
+
+
+# Час раунду вийшов: очко нікому не дається, починається наступний раунд.
+func _on_round_time_up() -> void:
+	if bomb:
+		# 2×2: T не встигли поставити бомбу — раунд виграє CT.
+		var scorer := -1
+		for id in alive_players.keys():
+			if alive_players[id] and int(teams.get(id, -1)) == TEAM_CT and scores.has(id):
+				scorer = id
+				break
+		if scorer == -1:
+			for id in scores.keys():
+				if int(teams.get(id, -1)) == TEAM_CT:
+					scorer = id
+					break
+		_finish_round(scorer)
+		return
+	_start_round_end()
+
+
+# Бомба поставлена: ліміт часу раунду більше не діє, далі тікає таймер бомби.
+func on_bomb_planted() -> void:
+	_play_timer.stop()
+
+
+# Вибух (виграє T) або розмінування (виграє CT).
+func on_bomb_result(winning_team: int, preferred_id: int) -> void:
+	if state != State.PLAYING:
+		return
+	var scorer := preferred_id
+	if not scores.has(scorer) or int(teams.get(scorer, -1)) != winning_team:
+		scorer = -1
+		for id in scores.keys():
+			if int(teams.get(id, -1)) == winning_team:
+				scorer = id
+				break
+	_finish_round(scorer)
+
+
+# Очко переможцю раунду (scorer = -1 — нікому), перевірка кінця гри, пауза до нового раунду.
+func _finish_round(scorer: int) -> void:
+	if scorer != -1:
+		scores[scorer] += 1
+	_scores_sync()
+	if scorer != -1:
+		var winning_score := int(scores.get(scorer, 0))
+		if game_mode == "2v2":
+			winning_score = _team_score(int(teams.get(scorer, TEAM_CT)))
+		if winning_score >= wins_to_end_game:
+			_end_game(scorer)
+			return
+	_start_round_end()
+
+
+func _start_round_end() -> void:
+	_play_timer.stop()
+	if bomb:
+		bomb.call("halt")
+	state = State.ROUND_END
+	_round_end_left = int(round_end_delay)
+	_hud(State.ROUND_END, _round_end_left)   # значення = секунди до наступного раунду
+	_round_end_timer.start()
+	_round_tick_timer.start()
 
 
 # Тільки сервер: кажемо власнику кожного гравця, що він (не) може рухатись.
@@ -634,6 +739,8 @@ func report_death(victim_id: int, attacker_id: int) -> void:
 		return
 
 	alive_players[victim_id] = false
+	if bomb:
+		bomb.call("on_player_died", victim_id)
 
 	if state == State.WAITING or state == State.COUNTDOWN:
 		_schedule_warmup_respawn(victim_id)
@@ -644,6 +751,9 @@ func report_death(victim_id: int, attacker_id: int) -> void:
 
 	# Раунд триває, поки в команді загиблого лишається хоч один живий гравець.
 	var victim_team := int(teams.get(victim_id, -1))
+	# Бомба вже стоїть: навіть якщо всі T загинули, раунд триває до вибуху чи розмінування.
+	if bomb and bool(bomb.get("planted")) and victim_team == TEAM_T:
+		return
 	if victim_team != -1:
 		for id in alive_players.keys():
 			if alive_players[id] and int(teams.get(id, -2)) == victim_team:
@@ -658,24 +768,7 @@ func report_death(victim_id: int, attacker_id: int) -> void:
 			if alive_players[id] and teams.has(id) and int(teams[id]) != victim_team and scores.has(id):
 				scorer = id
 				break
-	if scorer != -1:
-		scores[scorer] += 1
-
-	_scores_sync()
-
-	if scorer != -1:
-		var winning_score := int(scores.get(scorer, 0))
-		if game_mode == "2v2":
-			winning_score = _team_score(int(teams.get(scorer, TEAM_CT)))
-		if winning_score >= wins_to_end_game:
-			_end_game(scorer)
-			return
-
-	state = State.ROUND_END
-	_round_end_left = int(round_end_delay)
-	_hud(State.ROUND_END, _round_end_left)   # значення = секунди до наступного раунду
-	_round_end_timer.start()
-	_round_tick_timer.start()
+	_finish_round(scorer)
 
 
 func _schedule_warmup_respawn(victim_id: int) -> void:
@@ -711,6 +804,9 @@ func _on_round_end_timeout() -> void:
 
 func _end_game(winner_id: int) -> void:
 	_round_tick_timer.stop()
+	_play_timer.stop()
+	if bomb:
+		bomb.call("halt")
 	_freeze_timer.stop()
 	state = State.GAME_OVER
 	_reward_winner(winner_id)
@@ -757,6 +853,8 @@ func _on_game_over_timeout() -> void:
 @rpc("call_local", "reliable")
 func _sync_hud_state(new_state: int, value: int) -> void:
 	Hud.set_state(new_state, value)
+	if bomb:
+		bomb.call("on_hud_state", new_state, value)
 	if _scoreboard:
 		_scoreboard.call("set_state", new_state, value)
 

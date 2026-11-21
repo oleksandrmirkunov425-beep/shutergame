@@ -4,7 +4,17 @@ extends Camera3D
 @onready var knife: Node3D = $Karanbit
 @onready var bolisong: Node3D = get_node_or_null("bolisong") if has_node("bolisong") else get_node_or_null("balisong")
 @onready var bolisong_anim: AnimationPlayer = bolisong.get_node_or_null("AnimationPlayer") if bolisong else null
-@onready var butterfly: Node3D = get_node_or_null("butterfly")
+@onready var butterfly: Node3D = _find_butterfly_node()
+
+
+# Який саме butterfly використовується в грі: модель titan_butterfly (вузол із Knife_Root,
+# у сцені "buttefly"/"buttefly1" з анімацією Inspect_CS2). Інша модель (butterfly2, вузол
+# "butterfly"/"butterfly1" з Balisong_Vanilla) у грі НЕ використовується і лишається схованою.
+func _find_butterfly_node() -> Node3D:
+	for c in get_children():
+		if c is Node3D and c.name.to_lower().begins_with("butt") and c.has_node("Knife_Root"):
+			return c
+	return get_node_or_null("butterfly") as Node3D
 @onready var butterfly_anim: AnimationPlayer = _get_anim_player(butterfly)
 @onready var m9: Node3D = get_node_or_null("m9bayonet")
 @onready var m9_anim: AnimationPlayer = m9.get_node_or_null("AnimationPlayer") as AnimationPlayer if m9 else null
@@ -18,7 +28,16 @@ extends Camera3D
 
 var player_body: CharacterBody3D = null
 
-enum Weapon { AK47, KNIFE, SNIPER, M4 }
+enum Weapon { AK47, KNIFE, SNIPER, M4, BOMB }
+
+# ---- Бомба C4 (слот 4, лише T у 2×2; логіка в scenes/bomb_system.gd) ----
+const BOMB_MODEL_PATH := "res://bomb/c4.glb"
+@export_category("Bomb (C4)")
+@export var bomb_hold_position: Vector3 = Vector3(0.3, -0.34, -0.62)   # положення C4 в руках (відносно камери)
+@export var bomb_hold_rotation_deg: Vector3 = Vector3(28.0, -12.0, 0.0)
+@export var bomb_hold_scale: float = 1.8                               # модель ~24 см, збільшуємо для виду від першої особи
+var bomb_holder: Node3D = null
+var bomb_carrier: bool = false   # true, поки ця бомба призначена мені (ставить BombSystem)
 var current_weapon: Weapon = Weapon.KNIFE
 
 @export_category("Shooting Settings")
@@ -286,6 +305,7 @@ func _ready() -> void:
 	RenderingServer.frame_pre_draw.connect(_enforce_held_only)
 	_ensure_input_action("slot_primary", KEY_1)
 	_ensure_input_action("slot_knife", KEY_3)
+	_ensure_input_action("slot_bomb", KEY_4)
 	_ensure_input_action("weapon_menu", KEY_E)
 	_ensure_input_action("switch_hands", KEY_V)
 	_ensure_input_action("scope", KEY_NONE, MOUSE_BUTTON_RIGHT)
@@ -344,6 +364,7 @@ func _ready() -> void:
 	m4_ammo_in_mag = m4_mag_size
 	m4_reserve = m4_reserve_total
 	_setup_scope_ui()
+	_setup_bomb()
 	_setup_weapon_menu()
 	_setup_viewmodel_overlay()
 
@@ -436,6 +457,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if _is_paused():
 		return
 	# E — меню вибору основної зброї (АК-47 / M4 / AWP). Поки воно відкрите, ігрові дії вимкнені.
+	# На бомбсайті (T) або біля бомби (CT) E — це «поставити / розмінувати», меню зброї не відкриваємо.
+	if event.is_action_pressed("weapon_menu") and not _weapon_menu_open and bool(Engine.get_meta("bomb_can_use", false)):
+		return
 	if event.is_action_pressed("weapon_menu"):
 		if _weapon_menu_open:
 			_close_weapon_menu()
@@ -455,6 +479,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		switch_weapon(primary_weapon)
 	elif event.is_action_pressed("slot_knife") and not is_attacking:
 		switch_weapon(Weapon.KNIFE)
+	elif event.is_action_pressed("slot_bomb") and not is_attacking and bomb_carrier and bomb_holder != null and not _is_player_dead():
+		switch_weapon(Weapon.BOMB)
 
 	# На старті раунду та після смерті стріляти / бити ножем / перезаряджатись не можна.
 	if _is_player_dead() and (event.is_action_pressed("shoot") or event.is_action_pressed("reload")):
@@ -673,6 +699,37 @@ func _switch_weapon_rpc(weapon: Weapon) -> void:
 		if _has_authority():
 			is_drawing = false
 			_update_ammo_hud()
+	elif weapon == Weapon.BOMB:
+		if ak47_anim:
+			ak47_anim.stop()
+		if ak47_reload_anim:
+			ak47_reload_anim.stop()
+		if knife_anim:
+			knife_anim.stop()
+		if knife_attack_anim:
+			knife_attack_anim.stop()
+		_restore_arms_default_poses()
+		if bolisong_anim:
+			bolisong_anim.stop()
+			_restore_pose_base(_bolisong_pose_base)
+		_butterfly_cancel()
+		_restore_pose_base(_butterfly_pose_base)
+		_m9_stop()
+		if _has_authority() and ammo_label:
+			ammo_label.text = ""
+		# Діставання C4: бомба піднімається знизу в позу «тримаю».
+		if bomb_holder:
+			var end_pos: Vector3 = bomb_hold_position
+			bomb_holder.position = end_pos + Vector3(0.0, -0.45, 0.0)
+			var tw := create_tween()
+			tw.tween_property(bomb_holder, "position", end_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			if _has_authority():
+				is_drawing = true
+			await get_tree().create_timer(0.3).timeout
+			if my_switch != _switch_id:
+				return
+			if _has_authority():
+				is_drawing = false
 
 
 func knife_attack() -> void:
@@ -1810,7 +1867,7 @@ func _apply_visibility() -> void:
 	# Моделі від першої особи (АК, ножі, AWP, руки) бачить тільки їхній власник.
 	# У чужого клієнта копія цього гравця має їх повністю сховані, інакше вони «висять у повітрі» біля нього.
 	if not _has_authority():
-		for item in [ak47, knife, bolisong, butterfly, m9, sniper_holder, m4_holder]:
+		for item in [ak47, knife, bolisong, butterfly, m9, sniper_holder, m4_holder, bomb_holder]:
 			if item:
 				item.visible = false
 		if player_body != null:
@@ -1838,6 +1895,8 @@ func _apply_visibility() -> void:
 		sniper_holder.visible = is_sn and sniper_scope_level == 0
 	if m4_holder:
 		m4_holder.visible = is_m4
+	if bomb_holder:
+		bomb_holder.visible = current_weapon == Weapon.BOMB
 	_update_arms_visibility(is_sn)
 
 
@@ -2186,6 +2245,32 @@ func _ensure_input_action(action: String, key: Key = KEY_NONE, mouse: MouseButto
 		var em := InputEventMouseButton.new()
 		em.button_index = mouse
 		InputMap.action_add_event(action, em)
+
+
+# Модель C4 для виду від першої особи. Можна й вручну: додай у камеру вузол "bomb" з моделлю — тоді
+# беремо його «як є» (положення, поворот, масштаб із сцени).
+func _setup_bomb() -> void:
+	bomb_holder = get_node_or_null("bomb") as Node3D
+	if bomb_holder == null:
+		if not ResourceLoader.exists(BOMB_MODEL_PATH):
+			push_warning("Модель бомби %s не знайдена — слот 4 (C4) вимкнено." % BOMB_MODEL_PATH)
+			return
+		var packed := load(BOMB_MODEL_PATH) as PackedScene
+		var model: Node3D = null
+		if packed:
+			model = packed.instantiate() as Node3D
+		if model == null:
+			push_warning("Модель бомби не вдалось завантажити — слот 4 (C4) вимкнено.")
+			return
+		bomb_holder = Node3D.new()
+		bomb_holder.name = "bomb"
+		add_child(bomb_holder)
+		model.position = Vector3(0.0, -0.035, 0.0)   # центруємо модель (її початок — по центру низу)
+		bomb_holder.add_child(model)
+		bomb_holder.position = bomb_hold_position
+		bomb_holder.rotation_degrees = bomb_hold_rotation_deg
+		bomb_holder.scale = Vector3.ONE * bomb_hold_scale
+	bomb_holder.visible = false
 
 
 func _setup_m4() -> void:
@@ -2707,7 +2792,7 @@ func _setup_viewmodel_overlay() -> void:
 	if _vm_viewport != null:
 		return
 
-	for root in [ak47, knife, bolisong, butterfly, m9, sniper_holder, m4_holder]:
+	for root in [ak47, knife, bolisong, butterfly, m9, sniper_holder, m4_holder, bomb_holder]:
 		if root:
 			_set_render_layer(root, VIEWMODEL_LAYER)
 	if player_body != null:

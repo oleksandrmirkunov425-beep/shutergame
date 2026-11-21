@@ -19,6 +19,7 @@ var _big_label: Label      # великі цифри 3-2-1 по центру е�
 var _big_tween: Tween
 
 const COLOR_TIMER := Color(1.0, 0.85, 0.3)
+const COLOR_LOW := Color(1.0, 0.3, 0.25)   # останні 10 секунд раунду
 
 
 func _init() -> void:
@@ -166,6 +167,17 @@ func set_state(state: int, value: int) -> void:
 			_set_timer(str(value), COLOR_TIMER)
 			if value >= 1:
 				_show_big(value)
+		2:
+			# Раунд іде: value = секунди, що лишились (0 = без ліміту).
+			if value > 0:
+				_set_timer(str(value), COLOR_LOW if value <= 10 else Color.WHITE)
+			else:
+				_set_timer("VS", Color.WHITE)
+			_hide_big()
+		6:
+			# Бомба тікає: value = секунди до вибуху.
+			_set_timer(str(value), COLOR_LOW)
+			_hide_big()
 		_:
 			_set_timer("VS", Color.WHITE)
 			_hide_big()

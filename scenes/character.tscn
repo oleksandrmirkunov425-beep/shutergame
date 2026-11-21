@@ -2021,14 +2021,13 @@ transform = Transform3D(0.56598425, 0.17794923, 0.80498165, -0.6506148, 0.696092
 [node name="AnimationPlayer" parent="head/Camera3D/bolisong" index="1" unique_id=898344688]
 speed_scale = 1.585
 
-[node name="buttefly1" parent="head/Camera3D" unique_id=1612357434 instance=ExtResource("9_50cep")]
+[node name="buttefly" parent="head/Camera3D" unique_id=1612357434 instance=ExtResource("9_50cep")]
 transform = Transform3D(-0.026938478, -1.6675733, -1.1038437, 1.7323383, -0.57100564, 0.8203402, -0.99914026, -0.9450656, 1.4520912, 0.49823666, -0.15432036, -0.78993416)
-visible = false
 
-[node name="Knife_Root" parent="head/Camera3D/buttefly1" index="0" unique_id=846286799]
-transform = Transform3D(0.9999997, 0.000640421, -0.0004269464, -0.0006404204, 0.99999964, 1.7283045e-06, 0.00042694775, -1.4548797e-06, 0.9999991, -2.2071132e-05, -6.0869006e-05, 2.3482195e-05)
+[node name="Knife_Root" parent="head/Camera3D/buttefly" index="0" unique_id=846286799]
+transform = Transform3D(0.9999987, -0.0012237765, -0.001048933, 0.0012237689, 0.99999905, -8.092455e-06, 0.001048943, 6.808796e-06, 0.9999986, -1.214276e-05, 0.00024202125, 6.964192e-05)
 
-[node name="AnimationPlayer" parent="head/Camera3D/buttefly1" index="1" unique_id=737131678]
+[node name="AnimationPlayer" parent="head/Camera3D/buttefly" index="1" unique_id=737131678]
 libraries/ = SubResource("AnimationLibrary_butterfly")
 
 [node name="awp" parent="head/Camera3D" unique_id=798761012 instance=ExtResource("17_cicko")]
@@ -2041,16 +2040,20 @@ speed_scale = 1.5
 
 [node name="m4" parent="head/Camera3D" unique_id=852279871 instance=ExtResource("17_bj47h")]
 transform = Transform3D(0.28017193, 0, 1.26945, 0, 1.2999995, 0, -1.2694495, 0, 0.28017202, 0.4137262, -0.5474272, -0.4736753)
+visible = false
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="head/Camera3D/m4" unique_id=1699664572]
 libraries/ = SubResource("AnimationLibrary_8rpqn")
 
-[node name="butterfly" parent="head/Camera3D" unique_id=1452885692 instance=ExtResource("18_cicko")]
+[node name="butterfly1" parent="head/Camera3D" unique_id=1452885692 instance=ExtResource("18_cicko")]
 transform = Transform3D(0.5537891, 1.7854925, -0.71086854, -1.8829913, 0.65204406, 0.17083386, 0.38427013, 0.62197644, 1.8615806, 0.4644915, -0.2119999, -0.763)
 visible = false
 
-[node name="Balisong_Vanilla" parent="head/Camera3D/butterfly" index="0" unique_id=99757293]
-transform = Transform3D(0.9999996, 0.00064042246, -0.00042694533, -0.00064042176, 0.99999976, 1.728303e-06, 0.00042694632, -1.4548773e-06, 0.9999998, -2.2071132e-05, -6.0869006e-05, 2.3482195e-05)
+[node name="Balisong_Vanilla" parent="head/Camera3D/butterfly1" index="0" unique_id=99757293]
+transform = Transform3D(0.9999941, -0.003392611, 0, 0.0033926107, 0.99999416, 0, 0, 0, 0.9999999, -5.4904547e-05, 0.00027314646, 0)
+
+[node name="Handle_A_edge_side" parent="head/Camera3D/butterfly1/Balisong_Vanilla" index="1" unique_id=1777031836]
+transform = Transform3D(1, 5.976818e-06, 0, -5.976818e-06, 1, 0, 0, 0, 1, 0, -0.0063, 0)
 
 [node name="m9bayonet" parent="head/Camera3D" unique_id=1384398 instance=ExtResource("19_bj47h")]
 transform = Transform3D(-0.79067516, 1.5528919, -0.98150855, 1.4479545, -0.13083446, -1.3734303, -1.1306021, -1.2535578, -1.0725349, 0.4231705, -0.29458427, -0.8572791)
@@ -2097,10 +2100,10 @@ transform = Transform3D(0.58006775, -0.38501215, 0.717835, -0.0210117, 0.8738807
 
 [editable path="head/Camera3D/AK47"]
 [editable path="head/Camera3D/bolisong"]
-[editable path="head/Camera3D/buttefly1"]
+[editable path="head/Camera3D/buttefly"]
 [editable path="head/Camera3D/awp"]
 [editable path="head/Camera3D/m4"]
-[editable path="head/Camera3D/butterfly"]
+[editable path="head/Camera3D/butterfly1"]
 [editable path="head/Camera3D/m9bayonet"]
 [editable path="head/arms"]
 [editable path="player_model"]
