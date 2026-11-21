@@ -232,6 +232,7 @@ var _weapon_menu_layer: CanvasLayer = null
 const VIEWMODEL_LAYER: int = 1 << 19   # візуальний шар №20 (у сцені він вільний)
 var _vm_viewport: SubViewport = null
 var _vm_camera: Camera3D = null
+var _vm_tex: TextureRect = null   # картинка viewmodel (її дзеркалимо клавішею V)
 var _weapon_menu_open: bool = false
 var _weapon_menu_buttons: Dictionary = {}
 
@@ -286,6 +287,7 @@ func _ready() -> void:
 	_ensure_input_action("slot_primary", KEY_1)
 	_ensure_input_action("slot_knife", KEY_3)
 	_ensure_input_action("weapon_menu", KEY_E)
+	_ensure_input_action("switch_hands", KEY_V)
 	_ensure_input_action("scope", KEY_NONE, MOUSE_BUTTON_RIGHT)
 	_setup_sniper()
 	_setup_m4()
@@ -441,6 +443,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_open_weapon_menu()
 		return
 	if _weapon_menu_open:
+		return
+
+	# V — змінити руку (зброя зліва / справа), як switchhands у CS2.
+	if event.is_action_pressed("switch_hands"):
+		_toggle_hands()
 		return
 
 	# 1 — основна зброя (обрана в меню), 3 — ніж.
@@ -2734,6 +2741,9 @@ func _setup_viewmodel_overlay() -> void:
 	tex.stretch_mode = TextureRect.STRETCH_SCALE
 	tex.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tex.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_vm_tex = tex
+	GameSettings.load_settings()
+	_apply_hand_flip()
 	layer.add_child(tex)
 	layer.add_child(_vm_viewport)
 	add_child(layer)
@@ -2764,9 +2774,28 @@ func _make_viewmodel_environment() -> Environment:
 	return env
 
 
+# Дзеркалимо лише картинку viewmodel (руки + зброя). Стрільба й урон від цього не залежать.
+func _toggle_hands() -> void:
+	if _vm_tex == null or player_body == null or not player_body.is_multiplayer_authority():
+		return
+	GameSettings.left_handed = not GameSettings.left_handed
+	GameSettings.save_settings()
+	_apply_hand_flip()
+
+
+func _apply_hand_flip() -> void:
+	if _vm_tex == null:
+		return
+	# TextureRect не має flip_h, тому відображаємо через scale.x = -1 навколо центру екрана.
+	var s := _vm_tex.get_viewport_rect().size
+	_vm_tex.pivot_offset = s * 0.5
+	_vm_tex.scale = Vector2(-1.0 if GameSettings.left_handed else 1.0, 1.0)
+
+
 func _on_viewport_resized() -> void:
 	if _vm_viewport:
 		_vm_viewport.size = Vector2i(get_viewport().get_visible_rect().size)
+	_apply_hand_flip()
 
 
 # Камера зброї повторює позу основної камери (разом з віддачею).

@@ -7,6 +7,7 @@ const DEFAULT_SCOPE_MULTIPLIER := 1.0
 
 static var sensitivity: float = DEFAULT_SENSITIVITY
 static var scope_sensitivity_multiplier: float = DEFAULT_SCOPE_MULTIPLIER
+static var left_handed: bool = false   # зброя в лівій руці (клавіша V)
 static var _loaded := false
 
 static func load_settings() -> void:
@@ -18,9 +19,11 @@ static func load_settings() -> void:
 		return
 	sensitivity = clampf(float(config.get_value("mouse", "sensitivity", DEFAULT_SENSITIVITY)), 0.1, 5.0)
 	scope_sensitivity_multiplier = clampf(float(config.get_value("mouse", "scope_multiplier", DEFAULT_SCOPE_MULTIPLIER)), 0.1, 3.0)
+	left_handed = bool(config.get_value("view", "left_handed", false))
 
 static func save_settings() -> void:
 	var config := ConfigFile.new()
 	config.set_value("mouse", "sensitivity", sensitivity)
 	config.set_value("mouse", "scope_multiplier", scope_sensitivity_multiplier)
+	config.set_value("view", "left_handed", left_handed)
 	config.save(PATH)
