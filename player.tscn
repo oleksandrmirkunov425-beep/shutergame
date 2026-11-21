@@ -123,16 +123,16 @@ transform = Transform3D(-4.371139e-08, 0, 1, 0, 1, 0, -1, 0, -4.371139e-08, -0.0
 [node name="WingmanSpawns" type="Node3D" parent="SpawnPoints" unique_id=1931200173]
 
 [node name="2v2 spawn 1" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=642483691 groups=["spawn_points"]]
-transform = Transform3D(-0.795237, 0, 0.606299, 0, 1, 0, -0.606299, 0, -0.795237, 134.608, 6.862097, 31.491)
+transform = Transform3D(-0.795237, 0, 0.606299, 0, 1, 0, -0.606299, 0, -0.795237, 74.41364, 0.7316042, 8.71857)
 
 [node name="2v2 spawn 2" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=833077653 groups=["spawn_points"]]
-transform = Transform3D(-0.694754, 0, 0.719248, 0, 1, 0, -0.719248, 0, -0.694754, 149.345, 4.2597504, 32.676)
+transform = Transform3D(-0.694754, 0, 0.719248, 0, 1, 0, -0.719248, 0, -0.694754, 74.414, 0.732, 15.800655)
 
 [node name="2v2 spawn 3" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=1565977484 groups=["spawn_points"]]
-transform = Transform3D(0.699235, 0, -0.714891, 0, 1, 0, 0.714891, 0, 0.699235, 25.876175, 3.2573192, 148.49829)
+transform = Transform3D(0.699235, 0, -0.714891, 0, 1, 0, 0.714891, 0, 0.699235, 17.70231, 1.6410613, 81.53521)
 
 [node name="2v2 spawn 4" type="Marker3D" parent="SpawnPoints/WingmanSpawns" unique_id=1081839437 groups=["spawn_points"]]
-transform = Transform3D(0.761337, 0, -0.648357, 0, 1, 0, 0.648357, 0, 0.761337, 44.4045, 1.26, 132.42873)
+transform = Transform3D(0.761337, 0, -0.648357, 0, 1, 0, 0.648357, 0, 0.761337, 13.21751, 1.641, 81.535)
 
 [node name="MultiplayerSpawner" type="MultiplayerSpawner" parent="." unique_id=1102034679]
 spawn_path = NodePath("../players")
