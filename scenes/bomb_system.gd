@@ -40,6 +40,7 @@ var _sites_cached: bool = false
 var _hold_kind: int = -1        # який E-дію зараз виконуємо локально
 var _hold_t: float = 0.0
 var _sent_kind: int = -1        # що востаннє повідомили серверу
+var _done_sent: bool = false    # вже повідомили серверу, що утримання завершено
 var _visual: Node3D = null
 var _led: MeshInstance3D = null
 var _light: OmniLight3D = null
@@ -58,6 +59,7 @@ func setup(w: Node) -> void:
 	_bomb_timer.wait_time = 1.0
 	add_child(_bomb_timer)
 	_bomb_timer.timeout.connect(_on_bomb_tick)
+	call_deferred("_get_sites")   # одразу ховаємо зони (на всіх пірах)
 	if not multiplayer.is_server():
 		_build_ui()
 
@@ -78,6 +80,7 @@ func _get_sites() -> Array:
 	for n in get_tree().get_nodes_in_group("bombsite"):
 		if n is Node3D and world.room.is_ancestor_of(n):
 			_sites.append(n)
+			(n as Node3D).visible = false   # зона — лише розмітка, у грі її не видно нікому
 	for n in world.room.find_children("*", "Node3D", true, false):
 		if _sites.has(n):
 			continue
@@ -130,7 +133,6 @@ func _local_player() -> Node:
 
 func _process(delta: float) -> void:
 	if multiplayer.is_server():
-		_server_process(delta)
 		return
 	_client_process(delta)
 
@@ -179,9 +181,14 @@ func _client_process(delta: float) -> void:
 		if _sent_kind != kind:
 			_sent_kind = kind
 			_hold.rpc_id(1, kind, true)
+		var total := PLANT_TIME if kind == KIND_PLANT else DEFUSE_TIME
+		if _hold_t >= total and not _done_sent:
+			_done_sent = true
+			_hold_done.rpc_id(1, kind, (me as Node3D).global_position)
 	else:
 		_hold_kind = -1
 		_hold_t = 0.0
+		_done_sent = false
 		if _sent_kind != -1:
 			_sent_kind = -1
 			_hold.rpc_id(1, 0, false)
@@ -215,47 +222,71 @@ func _hold(kind: int, active: bool) -> void:
 	if not world.room_peers.has(id):
 		return
 	if active and (kind == KIND_PLANT or kind == KIND_DEFUSE):
-		_holders[id] = {"kind": kind, "t": 0.0}
+		_holders[id] = {"kind": kind, "start": Time.get_ticks_msec()}
 	else:
 		_holders.erase(id)
 
 
-func _server_process(delta: float) -> void:
-	if _holders.is_empty():
+# Клієнт відтримав E / ЛКМ потрібний час. Час перевіряємо приблизно, решту — повністю.
+# Позицію беремо від клієнта (позиція гравця на сервері може відставати від справжньої).
+@rpc("any_peer", "reliable")
+func _hold_done(kind: int, pos: Vector3) -> void:
+	if not multiplayer.is_server():
 		return
+	var id := multiplayer.get_remote_sender_id()
+	if not world.room_peers.has(id):
+		return
+	var h = _holders.get(id)
+	var total := PLANT_TIME if kind == KIND_PLANT else DEFUSE_TIME
+	if h == null or int(h["kind"]) != kind:
+		_deny(id, "сервер не бачить початку дії")
+		return
+	if float(Time.get_ticks_msec() - int(h["start"])) / 1000.0 < total * 0.7:
+		_deny(id, "занадто швидко")
+		return
+	var why := _check(id, kind, pos)
+	if why != "":
+		_deny(id, why)
+		return
+	_holders.erase(id)
+	if kind == KIND_PLANT:
+		_plant(id, pos)
+	else:
+		_defuse(id)
+
+
+func _deny(id: int, why: String) -> void:
+	print("[bomb] відмова гравцю %d: %s" % [id, why])
+	_on_hold_fail.rpc_id(id, why)
+
+
+# "" — усе гаразд, інакше причина відмови.
+func _check(id: int, kind: int, pos: Vector3) -> String:
 	if world.state != world.State.PLAYING:
-		_holders.clear()
-		return
-	for id in _holders.keys():
-		var h: Dictionary = _holders[id]
-		var kind: int = h["kind"]
-		if not _hold_valid(id, kind):
-			_holders.erase(id)
-			continue
-		h["t"] = float(h["t"]) + delta
-		if kind == KIND_PLANT and float(h["t"]) >= PLANT_TIME:
-			_plant(id)
-			return
-		if kind == KIND_DEFUSE and float(h["t"]) >= DEFUSE_TIME:
-			_defuse(id)
-			return
-
-
-func _hold_valid(id: int, kind: int) -> bool:
+		return "раунд не триває"
 	if not world.alive_players.get(id, false):
-		return false
-	var player := world.players_node.get_node_or_null(str(id)) as Node3D
-	if player == null:
-		return false
+		return "гравець мертвий"
 	var team := int(world.teams.get(id, -1))
 	if kind == KIND_PLANT:
-		return team == world.TEAM_T and id == _carrier and not planted and _site_at(player.global_position) != ""
-	return team == world.TEAM_CT and planted and _near_bomb(player.global_position)
+		if team != world.TEAM_T:
+			return "не команда T"
+		if id != _carrier:
+			return "бомба не в цього гравця"
+		if planted:
+			return "бомба вже поставлена"
+		if _site_at(pos) == "":
+			return "поза бомбсайтом (зон: %d, позиція %s)" % [_get_sites().size(), str(pos)]
+		return ""
+	if team != world.TEAM_CT:
+		return "не команда CT"
+	if not planted:
+		return "бомби немає"
+	if not _near_bomb(pos):
+		return "далеко від бомби"
+	return ""
 
 
-func _plant(id: int) -> void:
-	var player := world.players_node.get_node_or_null(str(id)) as Node3D
-	var p: Vector3 = player.global_position
+func _plant(id: int, p: Vector3) -> void:
 	# Ставимо бомбу на підлогу під гравцем.
 	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
 	# Промінь не повинен влучити в тіло/хітбокси гравців — інакше бомба зависає в повітрі на висоті тіла.
@@ -333,6 +364,11 @@ func _set_carrier(id: int) -> void:
 func _broadcast_carrier() -> void:
 	for pid in _peers():
 		_on_carrier.rpc_id(pid, _carrier)
+
+
+@rpc("call_local", "reliable")
+func _on_hold_fail(why: String) -> void:
+	_show_notice("Сервер: " + why, Color(1.0, 0.4, 0.3))
 
 
 @rpc("call_local", "reliable")

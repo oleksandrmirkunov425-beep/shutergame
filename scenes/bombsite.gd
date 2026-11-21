@@ -17,6 +17,8 @@ func _ready() -> void:
 		add_to_group("bombsite")
 	if show_marker:
 		_make_marker()
+	if not Engine.is_editor_hint():
+		visible = false   # у грі зона невидима для всіх
 
 
 func contains_point(p: Vector3) -> bool:
