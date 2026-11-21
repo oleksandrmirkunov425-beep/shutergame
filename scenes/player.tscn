@@ -153,3 +153,7 @@ visible = false
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=689066014]
 environment = SubResource("Environment_dtglo")
+
+[node name="bombplant" type="CSGBox3D" parent="." unique_id=1724136236]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.698568, 0.7553272, 13.15074)
+size = Vector3(22.233845, 0.5157471, 17.43193)

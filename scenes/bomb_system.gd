@@ -68,16 +68,42 @@ func _exit_tree() -> void:
 
 # ================= Бомбсайти =================
 
+# Бомбсайт — це вузол Bombsite (група "bombsite") АБО будь-який Node3D у цій кімнаті, чия назва починається
+# з "bombplant" / "bombsite" / "plant" (наприклад CSGBox3D "bombplant" у player.tscn).
+# Для такого вузла зона = його розмір (size) по X/Z, по висоті беремо із запасом.
 func _get_sites() -> Array:
 	if _sites_cached:
 		return _sites
 	_sites_cached = true
 	for n in get_tree().get_nodes_in_group("bombsite"):
-		if n is Node3D and world.room.is_ancestor_of(n) and n.has_method("contains_point"):
+		if n is Node3D and world.room.is_ancestor_of(n):
 			_sites.append(n)
+	for n in world.room.find_children("*", "Node3D", true, false):
+		if _sites.has(n):
+			continue
+		var nm := String(n.name).to_lower()
+		if nm.begins_with("bombplant") or nm.begins_with("bombsite") or nm.begins_with("plant"):
+			_sites.append(n)
+			# Це лише розмітка зони: у грі її не показуємо і колізії в неї немає.
+			(n as Node3D).visible = false
+			if "use_collision" in n:
+				n.set("use_collision", false)
 	if _sites.is_empty():
-		push_warning("bomb_system: на карті немає жодного бомбсайта (вузол Bombsite у групі 'bombsite') — бомбу можна ставити будь-де. Додай scenes/bombsite.tscn у player.tscn.")
+		push_warning("bomb_system: на карті немає бомбсайта (вузол Bombsite або Node3D з назвою bombplant) — бомбу можна ставити будь-де.")
+	else:
+		print("[bomb] бомбсайтів у кімнаті: %d" % _sites.size())
 	return _sites
+
+
+func _site_contains(s: Node3D, pos: Vector3) -> bool:
+	if s.has_method("contains_point"):
+		return s.contains_point(pos)
+	if not ("size" in s):
+		return false
+	var sz: Vector3 = s.get("size")
+	var l: Vector3 = s.global_transform.affine_inverse() * pos
+	# По висоті — із запасом: початок гравця ~1 м над підлогою, а зона може бути тонкою плитою.
+	return absf(l.x) <= sz.x * 0.5 and absf(l.z) <= sz.z * 0.5 and absf(l.y) <= sz.y * 0.5 + 3.0
 
 
 # "" — поза зоною; інакше назва бомбсайта ("?" — сайтів на карті немає, дозволено будь-де).
@@ -86,8 +112,8 @@ func _site_at(pos: Vector3) -> String:
 	if sites.is_empty():
 		return "?"
 	for s in sites:
-		if s.contains_point(pos):
-			return str(s.get("site_name"))
+		if _site_contains(s, pos):
+			return str(s.get("site_name")) if "site_name" in s else String(s.name)
 	return ""
 
 
@@ -232,9 +258,18 @@ func _plant(id: int) -> void:
 	var p: Vector3 = player.global_position
 	# Ставимо бомбу на підлогу під гравцем.
 	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
-	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.5, p + Vector3.DOWN * 6.0, 0xFFFFFFFF & ~2)
+	# Промінь не повинен влучити в тіло/хітбокси гравців — інакше бомба зависає в повітрі на висоті тіла.
+	var exclude: Array[RID] = []
+	for pl in world.players_node.get_children():
+		for co in pl.find_children("*", "CollisionObject3D", true, false):
+			exclude.append((co as CollisionObject3D).get_rid())
+		if pl is CollisionObject3D:
+			exclude.append((pl as CollisionObject3D).get_rid())
+	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.3, p + Vector3.DOWN * 6.0, 0xFFFFFFFF)
+	q.exclude = exclude
 	var r := space.intersect_ray(q)
-	bomb_pos = (r["position"] as Vector3) if not r.is_empty() else (p + Vector3.DOWN * 1.0)
+	# Запасний варіант: початок гравця лежить на 1.2 м над підлогою (див. спавни у world.gd).
+	bomb_pos = (r["position"] as Vector3) if not r.is_empty() else (p + Vector3.DOWN * 1.2)
 	planted = true
 	_planter = id
 	_active = true
