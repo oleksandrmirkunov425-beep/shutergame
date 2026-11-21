@@ -71,7 +71,7 @@ func _exit_tree() -> void:
 # ================= Бомбсайти =================
 
 # Бомбсайт — це вузол Bombsite (група "bombsite") АБО будь-який Node3D у цій кімнаті, чия назва починається
-# з "bombplant" / "bombsite" / "plant" (наприклад CSGBox3D "bombplant" у player.tscn).
+# з "bombplant" / "bombsite" (наприклад CSGBox3D "bombplant" у player.tscn).
 # Для такого вузла зона = його розмір (size) по X/Z, по висоті беремо із запасом.
 func _get_sites() -> Array:
 	if _sites_cached:
@@ -85,7 +85,7 @@ func _get_sites() -> Array:
 		if _sites.has(n):
 			continue
 		var nm := String(n.name).to_lower()
-		if nm.begins_with("bombplant") or nm.begins_with("bombsite") or nm.begins_with("plant"):
+		if nm.begins_with("bombplant") or nm.begins_with("bombsite"):
 			_sites.append(n)
 			# Це лише розмітка зони: у грі її не показуємо і колізії в неї немає.
 			(n as Node3D).visible = false
@@ -96,6 +96,20 @@ func _get_sites() -> Array:
 	else:
 		print("[bomb] бомбсайтів у кімнаті: %d" % _sites.size())
 	return _sites
+
+
+# Діагностика для повідомлення про відмову: найближчі зони та де в них стоїть гравець.
+func _describe_sites(pos: Vector3) -> String:
+	var rows: Array = []
+	for st in _get_sites():
+		var c: Vector3 = (st as Node3D).global_position
+		var sz: String = str((st.get("size") as Vector3).snapped(Vector3.ONE * 0.1)) if "size" in st else "-"
+		rows.append([Vector2(pos.x - c.x, pos.z - c.z).length(), "%s центр=%s розмір=%s" % [st.name, str(c.snapped(Vector3.ONE * 0.1)), sz]])
+	rows.sort_custom(func(x, y): return x[0] < y[0])
+	var out := "зон: %d, ваша позиція %s" % [rows.size(), str(pos.snapped(Vector3.ONE * 0.1))]
+	for i in mini(rows.size(), 3):
+		out += " | " + str(rows[i][1])
+	return out
 
 
 func _site_contains(s: Node3D, pos: Vector3) -> bool:
@@ -275,7 +289,7 @@ func _check(id: int, kind: int, pos: Vector3) -> String:
 		if planted:
 			return "бомба вже поставлена"
 		if _site_at(pos) == "":
-			return "поза бомбсайтом (зон: %d, позиція %s)" % [_get_sites().size(), str(pos)]
+			return "поза бомбсайтом. " + _describe_sites(pos)
 		return ""
 	if team != world.TEAM_CT:
 		return "не команда CT"
