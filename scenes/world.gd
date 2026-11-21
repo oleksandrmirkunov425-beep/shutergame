@@ -137,6 +137,7 @@ func _configure_map_and_spawns() -> void:
 	_use_oasis = use_oasis
 	_set_map_active(desert, not use_oasis)
 	_set_map_active(oasis, use_oasis)
+	_hide_collision_meshes(oasis)
 
 	var spawn_root := _get_spawn_root()
 	# Якщо в групі вже є 4+ точок (по 2 на команду) — додаткових не треба.
@@ -205,6 +206,30 @@ func _snap_oasis_spawns_to_ground() -> void:
 		# Початок гравця — центр капсули, тому піднімаємо на пів-висоти + запас.
 		sp.global_position = Vector3(pos.x, hit_y + 1.2, pos.z)
 		print("[world] oasis spawn %s: y %.2f -> %.2f" % [sp.name, pos.y, sp.global_position.y])
+
+
+var _map_fix_info: String = ""
+
+# У glb колізійні меші (*_collision-col) не мають матеріалу і Godot малює їх білими
+# поверх справжньої геометрії. Ховаємо лише картинку — колізія (StaticBody3D) лишається.
+func _hide_collision_meshes(map_node: Node) -> void:
+	if map_node == null:
+		return
+	var hidden := 0
+	for node in map_node.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var has_material := false
+		for i in mi.mesh.get_surface_count():
+			if mi.get_active_material(i) != null:
+				has_material = true
+				break
+		if String(mi.name).to_lower().contains("collision") or not has_material:
+			mi.visible = false
+			hidden += 1
+	_map_fix_info = "сховано колізійних мешів: %d" % hidden
+	print("[map-fix] ", _map_fix_info)
 
 
 func _set_map_active(map_node: Node, active: bool) -> void:

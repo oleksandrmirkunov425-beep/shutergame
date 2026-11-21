@@ -2698,7 +2698,7 @@ func _setup_viewmodel_overlay() -> void:
 	if _vm_viewport != null:
 		return
 
-	for root in [ak47, knife, bolisong, butterfly, sniper_holder, m4_holder]:
+	for root in [ak47, knife, bolisong, butterfly, m9, sniper_holder, m4_holder]:
 		if root:
 			_set_render_layer(root, VIEWMODEL_LAYER)
 	if player_body != null:
@@ -2822,13 +2822,18 @@ func _m9_attack() -> void:
 	if _has_authority():
 		is_attacking = true
 		is_inspecting = false
-	_m9_stop()
+	_m9_action_id += 1
 	var my_id: int = _m9_action_id
-	_m9_play_idle()
+	# idle тримає rotation ножа, тому на час помаху його зупиняємо (поза лишається як є)
+	if m9_anim:
+		m9_anim.stop()
+	var base_x: float = m9.rotation.x
 	var t := create_tween()
-	t.tween_property(m9, "rotation:x", _m9_base_rot.x + deg_to_rad(-40.0), 0.1)
-	t.tween_property(m9, "rotation:x", _m9_base_rot.x, 0.2)
+	t.tween_property(m9, "rotation:x", base_x + deg_to_rad(-40.0), 0.1)
+	t.tween_property(m9, "rotation:x", base_x, 0.2)
+	await get_tree().create_timer(0.3).timeout
+	if my_id != _m9_action_id:
+		return
 	if _has_authority():
-		await get_tree().create_timer(0.3).timeout
-		if my_id == _m9_action_id:
-			is_attacking = false
+		is_attacking = false
+	_m9_play_idle()
