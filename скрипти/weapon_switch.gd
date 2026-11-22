@@ -1784,6 +1784,9 @@ func _get_aim_point(direction: Vector3) -> Vector3:
 const AK_SKIN_SHADER := preload("res://skins/skin_side_projection.gdshader")
 const AK_SKIN_TEXTURES := {
 	"ak47_samurai": preload("res://skins/ak47_samurai.png"),
+	"ak47_cyber_circuit": preload("res://skins/ak47_cyber_circuit.png"),
+	"ak47_arctic_tactical": preload("res://skins/ak47_arctic_tactical.png"),
+	"ak47_crimson_filigree": preload("res://skins/ak47_crimson_filigree.png"),
 	"awp_samurai": preload("res://skins/awp_samurai.png"),
 }
 var _ak_default_overrides: Dictionary = {}   # MeshInstance3D -> стандартний material_override (щоб скін можна було зняти)
@@ -2803,7 +2806,9 @@ func _setup_viewmodel_overlay() -> void:
 
 	_vm_viewport = SubViewport.new()
 	_vm_viewport.transparent_bg = true
-	_vm_viewport.msaa_3d = get_viewport().msaa_3d
+	_vm_viewport.msaa_3d = Viewport.MSAA_4X
+	_vm_viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+	_vm_viewport.use_debanding = true
 	_vm_viewport.handle_input_locally = false
 	_vm_viewport.gui_disable_input = true
 	_vm_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -2817,6 +2822,8 @@ func _setup_viewmodel_overlay() -> void:
 	_vm_camera.far = 20.0
 	_vm_camera.environment = _make_viewmodel_environment()
 	_vm_viewport.add_child(_vm_camera)
+	_setup_viewmodel_lighting()
+	_enhance_viewmodel_materials()
 
 	var layer := CanvasLayer.new()
 	layer.layer = 0   # під HUD (приціл, HP, рахунок), над 3D-сценою
@@ -2837,6 +2844,74 @@ func _setup_viewmodel_overlay() -> void:
 	get_viewport().size_changed.connect(_on_viewport_resized)
 
 
+# Окреме студійне світло лише для рук і зброї (шар VIEWMODEL_LAYER). Світові світла цей шар
+# не освітлюють (див. light_cull_mask у player.tscn), тож вигляд зброї не залежить від напрямку сонця.
+func _setup_viewmodel_lighting() -> void:
+	var key := DirectionalLight3D.new()
+	key.name = "VMKey"
+	key.light_cull_mask = VIEWMODEL_LAYER
+	key.light_color = Color(1.0, 0.95, 0.86)
+	key.light_energy = 2.0
+	key.rotation_degrees = Vector3(-38.0, 28.0, 0.0)
+	key.shadow_enabled = true
+	key.shadow_bias = 0.01
+	key.shadow_normal_bias = 0.6
+	key.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	key.directional_shadow_max_distance = 4.0
+	add_child(key)
+
+	var rim := DirectionalLight3D.new()
+	rim.name = "VMRim"
+	rim.light_cull_mask = VIEWMODEL_LAYER
+	rim.light_color = Color(0.6, 0.78, 1.0)
+	rim.light_energy = 1.1
+	rim.rotation_degrees = Vector3(-18.0, 165.0, 0.0)   # з-за зброї назустріч камері — світлий контур
+	rim.shadow_enabled = false
+	add_child(rim)
+
+	var fill := DirectionalLight3D.new()
+	fill.name = "VMFill"
+	fill.light_cull_mask = VIEWMODEL_LAYER
+	fill.light_color = Color(1.0, 0.88, 0.75)
+	fill.light_energy = 0.55
+	fill.rotation_degrees = Vector3(25.0, -60.0, 0.0)
+	fill.shadow_enabled = false
+	add_child(fill)
+
+
+# Легкий rim і блиск на матеріалах рук/зброї. Пропускає прозорі, unshaded та емісивні (спалахи, діод C4).
+func _enhance_viewmodel_materials() -> void:
+	var roots: Array = [ak47, knife, bolisong, butterfly, m9, sniper_holder, m4_holder, bomb_holder]
+	if player_body != null:
+		roots.append(player_body.get_node_or_null("head/arms"))
+	for r in roots:
+		if r != null:
+			_enhance_node_materials(r)
+
+
+func _enhance_node_materials(node: Node) -> void:
+	if node is MeshInstance3D:
+		var mi := node as MeshInstance3D
+		if mi.mesh != null:
+			for i in mi.mesh.get_surface_count():
+				var m := mi.get_active_material(i)
+				if m is StandardMaterial3D:
+					var sm := m as StandardMaterial3D
+					if sm.shading_mode != BaseMaterial3D.SHADING_MODE_PER_PIXEL \
+							or sm.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED \
+							or sm.emission_enabled:
+						continue
+					var d := sm.duplicate() as StandardMaterial3D
+					d.rim_enabled = true
+					d.rim = 0.25
+					d.rim_tint = 0.5
+					if d.metallic > 0.2:
+						d.roughness = minf(d.roughness, 0.55)
+					mi.set_surface_override_material(i, d)
+	for c in node.get_children():
+		_enhance_node_materials(c)
+
+
 # Те саме освітлення, що й у світі, але з прозорим фоном (без неба й туману).
 func _make_viewmodel_environment() -> Environment:
 	var src: Environment = get_world_3d().environment
@@ -2850,6 +2925,16 @@ func _make_viewmodel_environment() -> Environment:
 				env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 		env.fog_enabled = false
 		env.volumetric_fog_enabled = false
+		env.ssao_enabled = false        # на прозорому фоні дає темні ореоли навколо рук
+		env.ssil_enabled = false
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.82, 0.86, 0.96)
+		env.ambient_light_energy = 1.0
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+		env.tonemap_exposure = maxf(src.tonemap_exposure, 1.15)
+		env.glow_enabled = true
+		env.glow_intensity = 0.6
+		env.glow_hdr_threshold = 1.1
 	else:
 		env = Environment.new()
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR

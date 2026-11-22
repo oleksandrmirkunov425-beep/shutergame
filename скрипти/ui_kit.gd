@@ -16,7 +16,13 @@ const C_GREEN := Color("5fd38d")
 const ART_AK := preload("res://skins/preview/ak47_samurai_cut.png")
 const ART_AWP := preload("res://skins/preview/awp_samurai_cut.png")
 const ART_M4 := preload("res://m4/m4_silhouette.png")   # силует M4 (вид збоку) для меню
-const SKIN_ART := {"ak47_samurai": ART_AK, "awp_samurai": ART_AWP}
+const ART_AK_CYBER := preload("res://skins/preview/ak47_cyber_circuit_cut.png")
+const ART_AK_ARCTIC := preload("res://skins/preview/ak47_arctic_tactical_cut.png")
+const ART_AK_CRIMSON := preload("res://skins/preview/ak47_crimson_filigree_cut.png")
+const SKIN_ART := {
+	"ak47_samurai": ART_AK, "awp_samurai": ART_AWP,
+	"ak47_cyber_circuit": ART_AK_CYBER, "ak47_arctic_tactical": ART_AK_ARCTIC, "ak47_crimson_filigree": ART_AK_CRIMSON,
+}
 const MIRROR_SKINS := true   # відзеркалити арт скінів (дуло вправо)
 const SKIN_ON_MODEL := []   # для цієї зброї скін малюється на 3D-моделі (порожній масив = завжди плоский арт)
 const WEAPON_SHAPE := {"ak47": ART_AK, "awp": ART_AWP, "m4": ART_M4}   # силует стандартної зброї (форма та сама)

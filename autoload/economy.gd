@@ -30,8 +30,11 @@ const DEFAULT_KNIFE := "bolisong"
 const WEAPON_SKINS := {
 	"ak47_samurai": {"weapon": "ak47", "name": "AK-47 | Самурай", "skin": "Самурай", "price": 20},
 	"awp_samurai": {"weapon": "awp", "name": "AWP | Самурай", "skin": "Самурай", "price": 20},
+	"ak47_cyber_circuit": {"weapon": "ak47", "name": "AK-47 | Кіберсхема", "skin": "Кіберсхема", "price": 20},
+	"ak47_arctic_tactical": {"weapon": "ak47", "name": "AK-47 | Арктика", "skin": "Арктика", "price": 20},
+	"ak47_crimson_filigree": {"weapon": "ak47", "name": "AK-47 | Багряна філігрань", "skin": "Багряна філігрань", "price": 20},
 }
-const SKIN_ORDER := ["ak47_samurai", "awp_samurai"]
+const SKIN_ORDER := ["ak47_samurai", "ak47_cyber_circuit", "ak47_arctic_tactical", "ak47_crimson_filigree", "awp_samurai"]
 const SKIN_WEAPONS := ["ak47", "awp"]
 
 const DB_PATH := "user://economy_db.json"      # сервер, лише якщо Firebase не налаштований

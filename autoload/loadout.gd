@@ -4,7 +4,7 @@ extends Node
 
 const SAVE_PATH := "user://loadout.cfg"
 const KNIVES: Array = ["karambit", "bolisong", "butterfly", "m9"]
-const AK_SKINS: Array = ["ak47_samurai"]   # "" = стандартний АК
+const AK_SKINS: Array = ["ak47_samurai", "ak47_cyber_circuit", "ak47_arctic_tactical", "ak47_crimson_filigree"]   # "" = стандартний АК
 const AWP_SKINS: Array = ["awp_samurai"]   # "" = стандартна AWP
 
 var knife: String = "bolisong"
