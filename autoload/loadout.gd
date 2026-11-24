@@ -4,8 +4,10 @@ extends Node
 
 const SAVE_PATH := "user://loadout.cfg"
 const KNIVES: Array = ["karambit", "bolisong", "butterfly", "m9"]
-const AK_SKINS: Array = ["ak47_samurai", "ak47_cyber_circuit", "ak47_arctic_tactical", "ak47_crimson_filigree"]   # "" = стандартний АК
-const AWP_SKINS: Array = ["awp_samurai"]   # "" = стандартна AWP
+const AK_SKINS: Array = ["ak47_samurai", "ak47_cyber_circuit", "ak47_arctic_tactical", "ak47_crimson_filigree",
+		"ak47_arctic_frost", "ak47_desert_warfare", "ak47_hazard_strike", "ak47_ocean_wave", "ak47_neon_circuit", "ak47_titanium_ghost", "ak47_royal_filigree", "ak47_void_lightning", "ak47_inferno", "ak47_emerald_dragon"]   # "" = стандартний АК
+const AWP_SKINS: Array = ["awp_samurai",
+		"awp_amber_carbon", "awp_desert_tactical", "awp_emerald_silver", "awp_frost_splinter", "awp_cobalt_chrome", "awp_obsidian_violet", "awp_blood_scales"]   # "" = стандартна AWP
 
 var knife: String = "bolisong"
 var ak_skin: String = ""

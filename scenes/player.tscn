@@ -20,6 +20,35 @@ sky_material = SubResource("PanoramaSkyMaterial_ashne")
 [sub_resource type="Environment" id="Environment_dtglo"]
 background_mode = 2
 sky = SubResource("Sky_yex4w")
+ambient_light_source = 3
+ambient_light_color = Color(0.74, 0.8, 0.92, 1)
+ambient_light_sky_contribution = 0.6
+ambient_light_energy = 1.2
+reflected_light_source = 2
+tonemap_mode = 3
+tonemap_exposure = 1.2
+tonemap_white = 6.0
+ssao_enabled = true
+ssao_radius = 1.6
+ssao_intensity = 1.7
+ssao_power = 1.6
+ssao_detail = 0.6
+ssao_light_affect = 0.25
+glow_enabled = true
+glow_normalized = true
+glow_intensity = 0.75
+glow_strength = 0.9
+glow_bloom = 0.04
+glow_hdr_scale = 1.8
+fog_enabled = true
+fog_light_color = Color(0.9, 0.86, 0.76, 1)
+fog_sun_scatter = 0.25
+fog_density = 0.001
+fog_aerial_perspective = 0.35
+fog_sky_affect = 0.3
+adjustment_enabled = true
+adjustment_contrast = 1.06
+adjustment_saturation = 1.22
 
 [node name="main" type="Node3D" unique_id=188924596]
 
@@ -95,7 +124,10 @@ text = "0"
 [node name="camerapivot" type="Node3D" parent="." unique_id=1364620538]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1725134308]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12.59265, 3.5971236, 33.93755)
+transform = Transform3D(-0.866, 0.25, -0.433, 0, 0.866, 0.5, 0.5, 0.433, -0.75, 12.59265, 3.5971236, 33.93755)
+light_color = Color(0.62, 0.75, 1, 1)
+light_energy = 0.4
+light_cull_mask = 4294443007
 
 [node name="HUD" type="CanvasLayer" parent="." unique_id=1557233407]
 
@@ -138,7 +170,19 @@ transform = Transform3D(0.761337, 0, -0.648357, 0, 1, 0, 0.648357, 0, 0.761337, 
 spawn_path = NodePath("../players")
 
 [node name="DirectionalLight3D2" type="DirectionalLight3D" parent="." unique_id=432823369]
-transform = Transform3D(1, 0, 0, 0, -0.46716344, 0.884171, 0, -0.884171, -0.46716344, 0, 22, 12.466396)
+transform = Transform3D(0.866, -0.2, 0.455, 0, -0.915, -0.402, 0.5, 0.346, -0.789, 0, 22, 12.466396)
+light_color = Color(1, 0.94, 0.82, 1)
+light_energy = 1.8
+light_angular_distance = 0.6
+light_cull_mask = 4294443007
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_normal_bias = 1.2
+shadow_blur = 1.4
+directional_shadow_split_1 = 0.08
+directional_shadow_split_2 = 0.22
+directional_shadow_blend_splits = true
+directional_shadow_max_distance = 110.0
 
 [node name="MAP" type="Node3D" parent="." unique_id=706932250]
 
@@ -156,4 +200,5 @@ environment = SubResource("Environment_dtglo")
 
 [node name="bombplant" type="CSGBox3D" parent="." unique_id=1724136236]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21.698568, 0.7553272, 13.15074)
+visible = false
 size = Vector3(22.233845, 0.5157471, 17.43193)

@@ -1788,6 +1788,23 @@ const AK_SKIN_TEXTURES := {
 	"ak47_arctic_tactical": preload("res://skins/ak47_arctic_tactical.png"),
 	"ak47_crimson_filigree": preload("res://skins/ak47_crimson_filigree.png"),
 	"awp_samurai": preload("res://skins/awp_samurai.png"),
+	"ak47_arctic_frost": preload("res://skins/ak47_arctic_frost.png"),
+	"ak47_desert_warfare": preload("res://skins/ak47_desert_warfare.png"),
+	"ak47_hazard_strike": preload("res://skins/ak47_hazard_strike.png"),
+	"ak47_ocean_wave": preload("res://skins/ak47_ocean_wave.png"),
+	"ak47_neon_circuit": preload("res://skins/ak47_neon_circuit.png"),
+	"ak47_titanium_ghost": preload("res://skins/ak47_titanium_ghost.png"),
+	"ak47_royal_filigree": preload("res://skins/ak47_royal_filigree.png"),
+	"ak47_void_lightning": preload("res://skins/ak47_void_lightning.png"),
+	"ak47_inferno": preload("res://skins/ak47_inferno.png"),
+	"ak47_emerald_dragon": preload("res://skins/ak47_emerald_dragon.png"),
+	"awp_amber_carbon": preload("res://skins/awp_amber_carbon.png"),
+	"awp_desert_tactical": preload("res://skins/awp_desert_tactical.png"),
+	"awp_emerald_silver": preload("res://skins/awp_emerald_silver.png"),
+	"awp_frost_splinter": preload("res://skins/awp_frost_splinter.png"),
+	"awp_cobalt_chrome": preload("res://skins/awp_cobalt_chrome.png"),
+	"awp_obsidian_violet": preload("res://skins/awp_obsidian_violet.png"),
+	"awp_blood_scales": preload("res://skins/awp_blood_scales.png"),
 }
 var _ak_default_overrides: Dictionary = {}   # MeshInstance3D -> стандартний material_override (щоб скін можна було зняти)
 
@@ -2851,7 +2868,7 @@ func _setup_viewmodel_lighting() -> void:
 	key.name = "VMKey"
 	key.light_cull_mask = VIEWMODEL_LAYER
 	key.light_color = Color(1.0, 0.95, 0.86)
-	key.light_energy = 2.0
+	key.light_energy = 1.4
 	key.rotation_degrees = Vector3(-38.0, 28.0, 0.0)
 	key.shadow_enabled = true
 	key.shadow_bias = 0.01
@@ -2864,7 +2881,7 @@ func _setup_viewmodel_lighting() -> void:
 	rim.name = "VMRim"
 	rim.light_cull_mask = VIEWMODEL_LAYER
 	rim.light_color = Color(0.6, 0.78, 1.0)
-	rim.light_energy = 1.1
+	rim.light_energy = 0.8
 	rim.rotation_degrees = Vector3(-18.0, 165.0, 0.0)   # з-за зброї назустріч камері — світлий контур
 	rim.shadow_enabled = false
 	add_child(rim)
@@ -2873,7 +2890,7 @@ func _setup_viewmodel_lighting() -> void:
 	fill.name = "VMFill"
 	fill.light_cull_mask = VIEWMODEL_LAYER
 	fill.light_color = Color(1.0, 0.88, 0.75)
-	fill.light_energy = 0.55
+	fill.light_energy = 0.4
 	fill.rotation_degrees = Vector3(25.0, -60.0, 0.0)
 	fill.shadow_enabled = false
 	add_child(fill)
@@ -2929,11 +2946,11 @@ func _make_viewmodel_environment() -> Environment:
 		env.ssil_enabled = false
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 		env.ambient_light_color = Color(0.82, 0.86, 0.96)
-		env.ambient_light_energy = 1.0
+		env.ambient_light_energy = 0.75
 		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 		env.tonemap_exposure = maxf(src.tonemap_exposure, 1.15)
 		env.glow_enabled = true
-		env.glow_intensity = 0.6
+		env.glow_intensity = 0.4
 		env.glow_hdr_threshold = 1.1
 	else:
 		env = Environment.new()

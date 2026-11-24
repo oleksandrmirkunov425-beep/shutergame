@@ -11,6 +11,7 @@ extends Node
 const PLANT_TIME := 3.0
 const DEFUSE_TIME := 5.0
 const BOMB_TIME := 40
+const MAX_PLANT_HEIGHT := 1.7   # макс. висота початку гравця над підлогою (у стоячому ~1.2 м)
 const DEFUSE_RADIUS := 2.2    # по горизонталі, м
 const HUD_BOMB := 6           # стан табло "бомба тікає" (див. scoreboard.gd)
 const KIND_PLANT := 0
@@ -173,7 +174,10 @@ func _client_process(delta: float) -> void:
 		var pos: Vector3 = (me as Node3D).global_position
 		if team == world.TEAM_T and not planted and _carrier == my_id and weapon == WEAPON_BOMB:
 			if _site_at(pos) != "":
-				kind = KIND_PLANT
+				if me is CharacterBody3D and not (me as CharacterBody3D).is_on_floor():
+					hint = "Бомбу не можна ставити в повітрі"
+				else:
+					kind = KIND_PLANT
 			else:
 				hint = "Бомбу можна поставити тільки на бомбсайті"
 		elif team == world.TEAM_CT and planted and not _defused_visual and _near_bomb(pos):
@@ -290,6 +294,8 @@ func _check(id: int, kind: int, pos: Vector3) -> String:
 			return "бомба вже поставлена"
 		if _site_at(pos) == "":
 			return "поза бомбсайтом. " + _describe_sites(pos)
+		if _height_above_floor(pos) > MAX_PLANT_HEIGHT:
+			return "гравець у повітрі"
 		return ""
 	if team != world.TEAM_CT:
 		return "не команда CT"
@@ -300,19 +306,31 @@ func _check(id: int, kind: int, pos: Vector3) -> String:
 	return ""
 
 
-func _plant(id: int, p: Vector3) -> void:
-	# Ставимо бомбу на підлогу під гравцем.
+
+# Промінь вниз від позиції гравця (без гравців). Повертає позицію підлоги або пустий словник.
+func _floor_hit(p: Vector3) -> Dictionary:
 	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
-	# Промінь не повинен влучити в тіло/хітбокси гравців — інакше бомба зависає в повітрі на висоті тіла.
 	var exclude: Array[RID] = []
 	for pl in world.players_node.get_children():
 		for co in pl.find_children("*", "CollisionObject3D", true, false):
 			exclude.append((co as CollisionObject3D).get_rid())
 		if pl is CollisionObject3D:
 			exclude.append((pl as CollisionObject3D).get_rid())
-	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.3, p + Vector3.DOWN * 6.0, 0xFFFFFFFF)
+	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.3, p + Vector3.DOWN * 8.0, 0xFFFFFFFF)
 	q.exclude = exclude
-	var r := space.intersect_ray(q)
+	return space.intersect_ray(q)
+
+
+func _height_above_floor(p: Vector3) -> float:
+	var r := _floor_hit(p)
+	if r.is_empty():
+		return 999.0
+	return p.y - (r["position"] as Vector3).y
+
+
+func _plant(id: int, p: Vector3) -> void:
+	# Ставимо бомбу на підлогу під гравцем.
+	var r := _floor_hit(p)
 	# Запасний варіант: початок гравця лежить на 1.2 м над підлогою (див. спавни у world.gd).
 	bomb_pos = (r["position"] as Vector3) if not r.is_empty() else (p + Vector3.DOWN * 1.2)
 	planted = true

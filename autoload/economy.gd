@@ -33,9 +33,56 @@ const WEAPON_SKINS := {
 	"ak47_cyber_circuit": {"weapon": "ak47", "name": "AK-47 | Кіберсхема", "skin": "Кіберсхема", "price": 20},
 	"ak47_arctic_tactical": {"weapon": "ak47", "name": "AK-47 | Арктика", "skin": "Арктика", "price": 20},
 	"ak47_crimson_filigree": {"weapon": "ak47", "name": "AK-47 | Багряна філігрань", "skin": "Багряна філігрань", "price": 20},
+	# Скіни, що випадають лише з кейсів (case_only): купити за коїни не можна, тільки виграти.
+	"ak47_arctic_frost": {"weapon": "ak47", "name": "AK-47 | Арктичний мороз", "skin": "Арктичний мороз", "price": 0, "rarity": "blue", "case_only": true},
+	"ak47_desert_warfare": {"weapon": "ak47", "name": "AK-47 | Пустельна війна", "skin": "Пустельна війна", "price": 0, "rarity": "blue", "case_only": true},
+	"ak47_hazard_strike": {"weapon": "ak47", "name": "AK-47 | Небезпечний удар", "skin": "Небезпечний удар", "price": 0, "rarity": "blue", "case_only": true},
+	"ak47_ocean_wave": {"weapon": "ak47", "name": "AK-47 | Океанська хвиля", "skin": "Океанська хвиля", "price": 0, "rarity": "blue", "case_only": true},
+	"ak47_neon_circuit": {"weapon": "ak47", "name": "AK-47 | Неонова схема", "skin": "Неонова схема", "price": 0, "rarity": "purple", "case_only": true},
+	"ak47_titanium_ghost": {"weapon": "ak47", "name": "AK-47 | Титановий привид", "skin": "Титановий привид", "price": 0, "rarity": "purple", "case_only": true},
+	"ak47_royal_filigree": {"weapon": "ak47", "name": "AK-47 | Королівська філігрань", "skin": "Королівська філігрань", "price": 0, "rarity": "pink", "case_only": true},
+	"ak47_void_lightning": {"weapon": "ak47", "name": "AK-47 | Блискавка порожнечі", "skin": "Блискавка порожнечі", "price": 0, "rarity": "pink", "case_only": true},
+	"ak47_inferno": {"weapon": "ak47", "name": "AK-47 | Інферно", "skin": "Інферно", "price": 0, "rarity": "red", "case_only": true},
+	"ak47_emerald_dragon": {"weapon": "ak47", "name": "AK-47 | Смарагдовий дракон", "skin": "Смарагдовий дракон", "price": 0, "rarity": "red", "case_only": true},
+	"awp_amber_carbon": {"weapon": "awp", "name": "AWP | Бурштиновий карбон", "skin": "Бурштиновий карбон", "price": 0, "rarity": "blue", "case_only": true},
+	"awp_desert_tactical": {"weapon": "awp", "name": "AWP | Пустельна тактика", "skin": "Пустельна тактика", "price": 0, "rarity": "blue", "case_only": true},
+	"awp_emerald_silver": {"weapon": "awp", "name": "AWP | Смарагдове срібло", "skin": "Смарагдове срібло", "price": 0, "rarity": "blue", "case_only": true},
+	"awp_frost_splinter": {"weapon": "awp", "name": "AWP | Крижаний уламок", "skin": "Крижаний уламок", "price": 0, "rarity": "purple", "case_only": true},
+	"awp_cobalt_chrome": {"weapon": "awp", "name": "AWP | Кобальтовий хром", "skin": "Кобальтовий хром", "price": 0, "rarity": "purple", "case_only": true},
+	"awp_obsidian_violet": {"weapon": "awp", "name": "AWP | Обсидіан-фіолет", "skin": "Обсидіан-фіолет", "price": 0, "rarity": "pink", "case_only": true},
+	"awp_blood_scales": {"weapon": "awp", "name": "AWP | Кривава луска", "skin": "Кривава луска", "price": 0, "rarity": "red", "case_only": true},
 }
-const SKIN_ORDER := ["ak47_samurai", "ak47_cyber_circuit", "ak47_arctic_tactical", "ak47_crimson_filigree", "awp_samurai"]
+const SKIN_ORDER := ["ak47_samurai", "ak47_cyber_circuit", "ak47_arctic_tactical", "ak47_crimson_filigree", "awp_samurai",
+		"ak47_arctic_frost", "ak47_desert_warfare", "ak47_hazard_strike", "ak47_ocean_wave", "ak47_neon_circuit", "ak47_titanium_ghost", "ak47_royal_filigree", "ak47_void_lightning", "ak47_inferno", "ak47_emerald_dragon",
+		"awp_amber_carbon", "awp_desert_tactical", "awp_emerald_silver", "awp_frost_splinter", "awp_cobalt_chrome", "awp_obsidian_violet", "awp_blood_scales"]
 const SKIN_WEAPONS := ["ak47", "awp"]
+
+# ---------- Кейси (як у CS2) ----------
+# Рулетку крутить клієнт, а ЩО випаде — вирішує тільки сервер (request_open_case). Скіни case_only купити не можна.
+# "model" — 3D-модель кейса (можна свою для кожного кейса). "items" — id скінів/ножів, що можуть випасти.
+const CASES := {
+	"emerald_dragon": {
+		"name": "Emerald Dragon Case", "price": 60, "model": "res://case/cs2_case_emerald_dragon.glb",
+		"items": [
+			"ak47_arctic_frost", "ak47_desert_warfare", "ak47_hazard_strike", "ak47_ocean_wave",
+			"ak47_neon_circuit", "ak47_titanium_ghost", "ak47_royal_filigree", "ak47_void_lightning",
+			"ak47_inferno", "ak47_emerald_dragon", "karambit", "butterfly", "m9"],
+	},
+	"sniper": {
+		"name": "Sniper Case", "price": 60, "model": "res://case/cs2_case_emerald_dragon.glb",
+		"items": [
+			"awp_amber_carbon", "awp_desert_tactical", "awp_emerald_silver", "awp_frost_splinter",
+			"awp_cobalt_chrome", "awp_obsidian_violet", "awp_blood_scales", "karambit", "butterfly", "m9"],
+	},
+}
+const CASE_ORDER := ["emerald_dragon", "sniper"]
+
+# Шанси за рідкістю (у %, нормалізуються серед тих рідкостей, що є в кейсі). Усередині рідкості — рівно.
+const RARITY_ORDER := ["blue", "purple", "pink", "red", "gold"]
+const RARITY_WEIGHTS := {"blue": 68.0, "purple": 20.0, "pink": 8.0, "red": 3.0, "gold": 1.0}
+const RARITY_NAMES := {"blue": "АРМІЙСЬКИЙ", "purple": "ОБМЕЖЕНИЙ", "pink": "ЗАСЕКРЕЧЕНИЙ", "red": "ТАЄМНИЙ", "gold": "РІДКІСНИЙ (НІЖ)"}
+# Якщо випав предмет, який уже є — повертаємо коїни (ніж: половина ціни).
+const DUPLICATE_REFUND := {"blue": 10, "purple": 20, "pink": 40, "red": 90}
 
 const DB_PATH := "user://economy_db.json"      # сервер, лише якщо Firebase не налаштований
 const TOKEN_PATH := "user://account.cfg"       # клієнт: лише "логін" (токен), не гроші
@@ -49,6 +96,7 @@ var view_equipped: String = ""    # вибраний ніж
 var view_skins: Dictionary = {}   # зброя -> вибраний скін ("" = стандартний), напр. {"ak47": "ak47_samurai"}
 signal profile_updated
 signal shop_message(text: String)
+signal case_opened(case_id: String, item_id: String, refund: int)   # сервер відповів: що випало з кейса
 
 # ---------- Сервер ----------
 var _peer_acc: Dictionary = {}    # peer_id -> ключ акаунта (лише ПІСЛЯ завантаження профілю)
@@ -56,11 +104,13 @@ var _db: Dictionary = {}          # ключ акаунта -> профіль (�
 var _loading: Dictionary = {}     # peer_id -> true, поки профіль вантажиться з Firebase
 var _fb_url: String = ""
 var _fb_secret: String = ""
+var _rng := RandomNumberGenerator.new()   # шанси кейсів (тільки сервер)
 
 
 func _ready() -> void:
 	if not _is_server_build():
 		return
+	_rng.randomize()
 	_fb_url = OS.get_environment("FIREBASE_URL").strip_edges().rstrip("/")
 	_fb_secret = OS.get_environment("FIREBASE_SECRET").strip_edges()
 	if _use_firebase():
@@ -113,6 +163,73 @@ static func _normalize(p: Dictionary) -> void:
 			skins[weapon] = ""
 
 
+# ====================== КЕЙСИ: спільні функції (клієнт і сервер) ======================
+# Єдиний опис предмета кейса (скін або ніж): назва, рідкість, що показувати в превʼю.
+static func item_info(id: String) -> Dictionary:
+	if KNIVES.has(id):
+		var k: Dictionary = KNIVES[id]
+		return {"id": id, "kind": "knife", "name": str(k["name"]), "weapon": "knife", "model": id, "skin": "",
+			"rarity": "gold", "price": int(k["price"])}
+	if WEAPON_SKINS.has(id):
+		var sk: Dictionary = WEAPON_SKINS[id]
+		return {"id": id, "kind": "skin", "name": str(sk["name"]), "weapon": str(sk["weapon"]), "model": str(sk["weapon"]),
+			"skin": id, "rarity": str(sk.get("rarity", "purple")), "price": int(sk["price"])}
+	return {}
+
+
+# Випадковий предмет кейса з урахуванням шансів. Сервер викликає з серверним rng; клієнт — лише для «масовки» в рулетці.
+static func roll_case(case_id: String, rng: RandomNumberGenerator) -> String:
+	if not CASES.has(case_id):
+		return ""
+	var by_rarity: Dictionary = {}
+	for id in CASES[case_id]["items"]:
+		var r := str(item_info(str(id)).get("rarity", ""))
+		if r == "":
+			continue
+		if not by_rarity.has(r):
+			by_rarity[r] = []
+		by_rarity[r].append(str(id))
+	var total := 0.0
+	for r in by_rarity:
+		total += float(RARITY_WEIGHTS.get(r, 0.0))
+	if total <= 0.0:
+		return ""
+	var roll := rng.randf() * total
+	var pick := ""
+	for r in RARITY_ORDER:
+		if not by_rarity.has(r):
+			continue
+		roll -= float(RARITY_WEIGHTS.get(r, 0.0))
+		pick = r
+		if roll < 0.0:
+			break
+	var pool: Array = by_rarity[pick]
+	return str(pool[rng.randi() % pool.size()])
+
+
+# Шанс (у %) кожної рідкості в цьому кейсі — для показу гравцю.
+static func case_odds(case_id: String) -> Dictionary:
+	var present: Dictionary = {}
+	for id in CASES[case_id]["items"]:
+		present[str(item_info(str(id)).get("rarity", ""))] = true
+	var total := 0.0
+	for r in present:
+		total += float(RARITY_WEIGHTS.get(r, 0.0))
+	var out: Dictionary = {}
+	for r in RARITY_ORDER:
+		if present.has(r) and total > 0.0:
+			out[r] = float(RARITY_WEIGHTS[r]) / total * 100.0
+	return out
+
+
+static func duplicate_refund(id: String) -> int:
+	var info := item_info(id)
+	if info.is_empty():
+		return 0
+	if str(info["kind"]) == "knife":
+		return maxi(1, roundi(float(info["price"]) / 2.0))
+	return int(DUPLICATE_REFUND.get(str(info["rarity"]), 10))
+
 # ====================== КЛІЄНТ ======================
 func send_hello() -> void:
 	hello.rpc_id(1, _get_token())
@@ -145,6 +262,13 @@ func sync_profile(coins: int, reward: int, owned: Array, equipped: String, skins
 	if KNIVES.has(equipped):
 		Loadout.set_knife(equipped)   # саме цей ніж гра візьме в матчі
 	profile_updated.emit()
+
+
+@rpc("authority", "reliable")
+func case_result(case_id: String, item_id: String, refund: int) -> void:
+	if multiplayer.is_server():
+		return
+	case_opened.emit(case_id, item_id, refund)
 
 
 @rpc("authority", "reliable")
@@ -282,6 +406,9 @@ func request_buy_skin(skin_id: String) -> void:
 	if p["owned"].has(skin_id):
 		_reply(peer, "Цей скін у тебе вже є.")
 		return
+	if bool(WEAPON_SKINS[skin_id].get("case_only", false)):
+		_reply(peer, "Цей скін випадає лише з кейсів.")   # інакше ціна 0 = безкоштовно для всіх
+		return
 	var price: int = WEAPON_SKINS[skin_id]["price"]
 	if int(p["coins"]) < price:
 		_reply(peer, "Не вистачає коїнів: потрібно %d." % price)
@@ -309,6 +436,36 @@ func request_equip_skin(weapon: String, skin_id: String) -> void:
 	p["skins"][weapon] = skin_id
 	_save_profile(_peer_acc[peer])
 	_push(peer, 0)
+
+
+# Відкриття кейса: сервер перевіряє баланс, списує ціну, САМ вибирає предмет і видає його.
+# Клієнт отримує лише результат (case_result) і крутить рулетку, яка зупиняється на цьому предметі.
+@rpc("any_peer", "reliable")
+func request_open_case(case_id: String) -> void:
+	if not multiplayer.is_server():
+		return
+	var peer := multiplayer.get_remote_sender_id()
+	var p := _profile_of(peer)
+	if p.is_empty() or not CASES.has(case_id):
+		return
+	var price: int = CASES[case_id]["price"]
+	if int(p["coins"]) < price:
+		_reply(peer, "Не вистачає коїнів: потрібно %d." % price)
+		return
+	var item := roll_case(case_id, _rng)
+	if item == "":
+		return
+	p["coins"] = int(p["coins"]) - price      # спочатку списуємо
+	var refund := 0
+	if p["owned"].has(item):
+		refund = duplicate_refund(item)       # дублікат -> частина вартості назад
+		p["coins"] = int(p["coins"]) + refund
+	else:
+		p["owned"][item] = true               # не вибираємо автоматично: гравець сам обере в результаті
+	_save_profile(_peer_acc[peer])
+	_push(peer, 0)
+	if peer != 1 and multiplayer.get_peers().has(peer):
+		case_result.rpc_id(peer, case_id, item, refund)
 
 
 func _reply(peer: int, text: String) -> void:

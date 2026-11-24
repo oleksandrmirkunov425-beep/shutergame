@@ -4,11 +4,12 @@ extends Control
 # Купівля й вибір — ті самі RPC, що й раніше: Economy.request_buy_* / request_equip_*.
 
 const Kit := preload("res://скрипти/ui_kit.gd")
+const CASE_UI_SCRIPT := preload("res://скрипти/case_ui.gd")
 
 signal closed
 
 const WEAPON_TITLE := {"ak47": "AK-47", "m4": "M4", "awp": "AWP"}
-const TABS := [["knife", "НОЖІ"], ["ak47", "АК-47"], ["m4", "M4"], ["awp", "AWP"]]
+const TABS := [["knife", "НОЖІ"], ["ak47", "АК-47"], ["m4", "M4"], ["awp", "AWP"], ["case", "КЕЙСИ"]]
 
 # Чи можна зараз купувати/вибирати (є звʼязок із сервером). Задає menu.gd.
 var online_check: Callable = Callable()
@@ -25,6 +26,7 @@ var _detail_info: VBoxContainer
 var _detail_btn: Button
 var _msg: Label
 var _detail_sig := ""
+var _case_ui: Control   # екран кейса з рулеткою (скрипти/case_ui.gd)
 
 
 func build() -> void:
@@ -56,6 +58,12 @@ func build() -> void:
 	_msg = Kit.label("", 18, Kit.C_GOLD, false, HORIZONTAL_ALIGNMENT_CENTER, 0)
 	_msg.custom_minimum_size = Vector2(0, 26)
 	col.add_child(_msg)
+
+	# Екран кейса лежить поверх магазину (додається останнім).
+	_case_ui = CASE_UI_SCRIPT.new()
+	add_child(_case_ui)
+	_case_ui.build()
+	_case_ui.closed.connect(refresh)
 
 
 # ---------------------------------------------------------------- шапка
@@ -208,6 +216,14 @@ func _current_knife() -> String:
 
 func _items(tab: String) -> Array:
 	var out: Array = []
+	if tab == "case":
+		for cid in Economy.CASE_ORDER:
+			var cinfo: Dictionary = Economy.CASES[cid]
+			out.append({
+				"key": "case:" + cid, "kind": "case", "id": cid, "weapon": "case", "model": "", "skin": "",
+				"line1": str(cinfo["name"]).to_upper(), "line2": "", "full": str(cinfo["name"]).to_upper(),
+				"price": int(cinfo["price"]), "owned": false, "equipped": false, "rarity": "gold"})
+		return out
 	if tab == "knife":
 		for id in Economy.KNIFE_ORDER:
 			var info: Dictionary = Economy.KNIVES[id]
@@ -228,11 +244,13 @@ func _items(tab: String) -> Array:
 		var info: Dictionary = Economy.WEAPON_SKINS[sid]
 		if str(info["weapon"]) != tab:
 			continue
+		if bool(info.get("case_only", false)) and not Economy.view_owned.has(sid):
+			continue   # скіни з кейсів показуємо лише коли вони вже виграні
 		var price := int(info["price"])
 		out.append({
 			"key": tab + ":" + sid, "kind": "skin", "id": sid, "weapon": tab, "model": tab, "skin": sid,
 			"line1": title, "line2": str(info["skin"]).to_upper(), "full": str(info["name"]).to_upper(),
-			"price": price, "owned": Economy.view_owned.has(sid), "equipped": cur == sid,
+			"price": price, "owned": Economy.view_owned.has(sid), "equipped": cur == sid, "from_case": bool(info.get("case_only", false)),
 			"rarity": Kit.rarity_of(info, price)})
 	return out
 
@@ -246,7 +264,12 @@ func _selected_item() -> Dictionary:
 
 # ---------------------------------------------------------------- дії
 func _act(it: Dictionary) -> void:
-	if it.is_empty() or not _online():
+	if it.is_empty():
+		return
+	if str(it["kind"]) == "case":
+		_open_case(str(it["id"]))   # дивитись вміст можна й без звʼязку; відкрити — лише онлайн (перевіряє case_ui)
+		return
+	if not _online():
 		return
 	match str(it["kind"]):
 		"knife":
@@ -265,8 +288,28 @@ func _act(it: Dictionary) -> void:
 				Economy.request_buy_skin.rpc_id(1, it["id"])
 
 
+func _open_case(cid: String) -> void:
+	_case_ui.online_check = online_check
+	_case_ui.open(cid)
+
+
+# 3D-модель кейса (або напис, якщо моделі немає).
+func _case_preview(cid: String) -> Control:
+	var info: Dictionary = Economy.CASES[cid]
+	var path := str(info.get("model", ""))
+	if path != "" and ResourceLoader.exists(path):
+		var packed := load(path) as PackedScene
+		if packed != null:
+			return Kit.ModelPreview.new(packed)
+	var l := Kit.label(str(info["name"]).to_upper(), 24, Kit.C_MUTED, true, HORIZONTAL_ALIGNMENT_CENTER, 2)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	return l
+
+
 # Текст і вигляд головної кнопки дії для предмета.
 func _action_for(it: Dictionary) -> Array:   # [текст, вид, вимкнена?]
+	if it["kind"] == "case":
+		return ["ВІДКРИТИ КЕЙС", "primary", false]
 	if it["kind"] == "knife" or it["kind"] == "default":
 		if it["equipped"]:
 			return ["ОБРАНО", "dim", true]
@@ -295,7 +338,7 @@ func set_message(text: String) -> void:
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	if visible and event.is_action_pressed("ui_cancel"):
+	if visible and not _case_ui.visible and event.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
 
@@ -327,7 +370,7 @@ func refresh() -> void:
 		c.queue_free()
 	_cards.clear()
 	for it in items:
-		var card := _make_card(it)
+		var card := _make_case_card(it) if str(it["kind"]) == "case" else _make_card(it)
 		_grid.add_child(card)
 		_cards[it["key"]] = card
 	_refresh_detail()
@@ -389,7 +432,7 @@ func _make_card(it: Dictionary) -> Control:
 		var enough: bool = Economy.view_coins >= int(it["price"])
 		price_row.add_child(Kit.label(str(it["price"]), 24, Kit.C_GOLD if enough else Kit.C_RED_HI))
 	else:
-		price_row.add_child(Kit.label("Є У ТЕБЕ" if it["price"] > 0 else "БЕЗКОШТОВНО", 16, Kit.C_MUTED, true))
+		price_row.add_child(Kit.label("З КЕЙСА" if it.get("from_case", false) else ("Є У ТЕБЕ" if it["price"] > 0 else "БЕЗКОШТОВНО"), 16, Kit.C_MUTED, true))
 
 	var btns := HBoxContainer.new()
 	btns.add_theme_constant_override("separation", 8)
@@ -421,6 +464,64 @@ func _make_card(it: Dictionary) -> Control:
 	return card
 
 
+func _make_case_card(it: Dictionary) -> Control:
+	var rc := Kit.rarity_color(it["rarity"])
+	var selected: bool = it["key"] == _selected
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 290)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	card.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	card.add_theme_stylebox_override("panel", Kit.box(
+		Color(rc.r * 0.14 + 0.04, rc.g * 0.14 + 0.04, rc.b * 0.14 + 0.05, 0.95),
+		rc.lightened(0.25) if selected else rc, 2 if selected else 1, 8,
+		Color(rc, 0.35 if selected else 0.12), 12 if selected else 6))
+	card.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_selected = str(it["key"])
+			refresh())
+
+	var m := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 12)
+	card.add_child(m)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	m.add_child(v)
+
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(0, 150)
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.clip_contents = true
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(holder)
+	var pv := _case_preview(str(it["id"]))
+	pv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.add_child(pv)
+
+	var names := Kit.label(str(it["line1"]), 22, Kit.C_TEXT, true, HORIZONTAL_ALIGNMENT_LEFT, 1)
+	names.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(names)
+
+	var price_row := HBoxContainer.new()
+	price_row.add_theme_constant_override("separation", 8)
+	price_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(price_row)
+	price_row.add_child(Kit.CoinIcon.new(22))
+	var enough: bool = Economy.view_coins >= int(it["price"])
+	price_row.add_child(Kit.label(str(it["price"]), 24, Kit.C_GOLD if enough else Kit.C_RED_HI))
+
+	var open_b := Button.new()
+	open_b.text = "ВІДКРИТИ"
+	open_b.custom_minimum_size = Vector2(0, 40)
+	Kit.style_button(open_b, "primary", 16)
+	open_b.pressed.connect(func():
+		_selected = str(it["key"])
+		_act(it))
+	v.add_child(open_b)
+	return card
+
+
 func _refresh_detail() -> void:
 	var it := _selected_item()
 	if it.is_empty():
@@ -432,7 +533,7 @@ func _refresh_detail() -> void:
 		for c in _detail_preview.get_children():
 			_detail_preview.remove_child(c)
 			c.queue_free()
-		var pv := Kit.make_preview(it["model"], it["skin"], Color("a3acbf"), true, true)   # у деталях скін крутиться в 3D
+		var pv: Control = _case_preview(str(it["id"])) if it["kind"] == "case" else Kit.make_preview(it["model"], it["skin"], Color("a3acbf"), true, true)   # у деталях скін крутиться в 3D
 		pv.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		_detail_preview.add_child(pv)
 	_detail_sig = sig
@@ -442,6 +543,18 @@ func _refresh_detail() -> void:
 	for c in _detail_info.get_children():
 		_detail_info.remove_child(c)
 		c.queue_free()
+	if it["kind"] == "case":
+		_detail_info.add_child(_info_row("ТИП", "КЕЙС", Kit.C_TEXT))
+		_detail_info.add_child(_info_row("ЦІНА", "%d" % int(it["price"]), Kit.C_GOLD))
+		_detail_info.add_child(_info_row("ПРЕДМЕТІВ", "%d" % (Economy.CASES[it["id"]]["items"] as Array).size(), Kit.C_TEXT))
+		var cbar := ColorRect.new()
+		cbar.color = rc
+		cbar.custom_minimum_size = Vector2(0, 3)
+		_detail_info.add_child(cbar)
+		_detail_btn.text = "ВІДКРИТИ КЕЙС"
+		_detail_btn.disabled = false
+		Kit.style_button(_detail_btn, "primary", 32)
+		return
 	var status := "ОБРАНО" if it["equipped"] else ("КУПЛЕНО" if it["owned"] else "НЕ КУПЛЕНО")
 	_detail_info.add_child(_info_row("СТАТУС", status, Kit.C_GOLD if it["equipped"] else Kit.C_TEXT))
 	var kind_name := "НІЖ" if it["kind"] == "knife" else ("СКІН" if it["kind"] == "skin" else "БАЗОВИЙ ВИГЛЯД")

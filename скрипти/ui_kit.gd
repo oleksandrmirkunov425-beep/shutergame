@@ -45,7 +45,9 @@ static func rarity_color(r: String) -> Color:
 	match r:
 		"gold": return C_GOLD
 		"red": return C_RED
+		"pink": return Color("d32ce6")
 		"purple": return C_PURPLE
+		"blue": return Color("4b69ff")
 	return C_STEEL
 
 
@@ -97,6 +99,10 @@ static func style_button(b: Button, kind: String, font_size: int = 22) -> void:
 			bg = Color("2d0d14"); border = C_RED; fg = Color("ff8c99")
 		"purple":
 			bg = Color("1f1638"); border = C_PURPLE; fg = Color("c9adff")
+		"blue":
+			bg = Color("111a3a"); border = Color("4b69ff"); fg = Color("aebdff")
+		"pink":
+			bg = Color("2a1033"); border = Color("d32ce6"); fg = Color("f0a6f7")
 		"dim":
 			bg = Color("16181e"); border = Color("30343e"); fg = C_MUTED
 		"tab_on":
@@ -820,11 +826,7 @@ static func make_preview(model_key: String, skin_id: String, steel: Color = Colo
 		if packed3d != null and ResourceLoader.exists(sp):
 			return ModelPreview.new(packed3d, load(sp) as Texture2D)
 	if skin_id != "":
-		var art: Texture2D = SKIN_ART.get(skin_id)
-		if art == null:
-			var p := "res://skins/%s.png" % skin_id
-			if ResourceLoader.exists(p):
-				art = load(p) as Texture2D
+		var art: Texture2D = skin_art(skin_id)
 		if art != null:
 			if spin:
 				return SpinCard.new(art, MIRROR_SKINS)
@@ -838,6 +840,22 @@ static func make_preview(model_key: String, skin_id: String, steel: Color = Colo
 	if WEAPON_SHAPE.has(model_key):
 		return silhouette(WEAPON_SHAPE[model_key], steel)
 	return BladeIcon.new(steel)
+
+
+# Малюнок скіна для карток: з SKIN_ART, інакше вирізка skins/preview/<id>_cut.png, інакше skins/<id>.png.
+static var _art_cache: Dictionary = {}
+static func skin_art(skin_id: String) -> Texture2D:
+	if SKIN_ART.has(skin_id):
+		return SKIN_ART[skin_id]
+	if _art_cache.has(skin_id):
+		return _art_cache[skin_id]
+	var art: Texture2D = null
+	for p in ["res://skins/preview/%s_cut.png" % skin_id, "res://skins/%s.png" % skin_id]:
+		if ResourceLoader.exists(p):
+			art = load(p) as Texture2D
+			break
+	_art_cache[skin_id] = art
+	return art
 
 
 static func _tex(t: Texture2D) -> TextureRect:

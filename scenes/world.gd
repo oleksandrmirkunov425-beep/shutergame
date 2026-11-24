@@ -71,7 +71,19 @@ var _round_end_timer: Timer
 var _game_over_timer: Timer
 
 
+func _setup_graphics() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
+	var vp := get_viewport()
+	vp.msaa_3d = Viewport.MSAA_4X
+	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
+	vp.use_debanding = true
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
+	RenderingServer.directional_shadow_atlas_set_size(4096, true)
+
+
 func _ready() -> void:
+	_setup_graphics()
 	# world -> MAP -> main (корінь кімнати)
 	room = get_node("../..")
 	room_id = room.name.to_int()
