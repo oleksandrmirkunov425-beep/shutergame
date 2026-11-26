@@ -67,6 +67,9 @@ func setup(w: Node) -> void:
 
 func _exit_tree() -> void:
 	Engine.set_meta("bomb_can_use", false)
+	var me: Node = _local_player() if is_instance_valid(world) and is_instance_valid(world.players_node) else null
+	if me != null:
+		me.set("bomb_planting", false)
 
 
 # ================= Бомбсайти =================
@@ -93,9 +96,9 @@ func _get_sites() -> Array:
 			if "use_collision" in n:
 				n.set("use_collision", false)
 	if _sites.is_empty():
-		push_warning("bomb_system: на карті немає бомбсайта (вузол Bombsite або Node3D з назвою bombplant) — бомбу можна ставити будь-де.")
+		push_warning("bomb_system: no bombsite on the map (a Bombsite node or a Node3D named bombplant) — the bomb can be planted anywhere.")
 	else:
-		print("[bomb] бомбсайтів у кімнаті: %d" % _sites.size())
+		print("[bomb] bombsites in the room: %d" % _sites.size())
 	return _sites
 
 
@@ -105,9 +108,9 @@ func _describe_sites(pos: Vector3) -> String:
 	for st in _get_sites():
 		var c: Vector3 = (st as Node3D).global_position
 		var sz: String = str((st.get("size") as Vector3).snapped(Vector3.ONE * 0.1)) if "size" in st else "-"
-		rows.append([Vector2(pos.x - c.x, pos.z - c.z).length(), "%s центр=%s розмір=%s" % [st.name, str(c.snapped(Vector3.ONE * 0.1)), sz]])
+		rows.append([Vector2(pos.x - c.x, pos.z - c.z).length(), "%s center=%s size=%s" % [st.name, str(c.snapped(Vector3.ONE * 0.1)), sz]])
 	rows.sort_custom(func(x, y): return x[0] < y[0])
-	var out := "зон: %d, ваша позиція %s" % [rows.size(), str(pos.snapped(Vector3.ONE * 0.1))]
+	var out := "zones: %d, your position %s" % [rows.size(), str(pos.snapped(Vector3.ONE * 0.1))]
 	for i in mini(rows.size(), 3):
 		out += " | " + str(rows[i][1])
 	return out
@@ -175,13 +178,17 @@ func _client_process(delta: float) -> void:
 		if team == world.TEAM_T and not planted and _carrier == my_id and weapon == WEAPON_BOMB:
 			if _site_at(pos) != "":
 				if me is CharacterBody3D and not (me as CharacterBody3D).is_on_floor():
-					hint = "Бомбу не можна ставити в повітрі"
+					hint = "The bomb can't be planted in mid-air"
 				else:
 					kind = KIND_PLANT
 			else:
-				hint = "Бомбу можна поставити тільки на бомбсайті"
+				hint = "The bomb can only be planted on a bombsite"
 		elif team == world.TEAM_CT and planted and not _defused_visual and _near_bomb(pos):
 			kind = KIND_DEFUSE
+
+	# Поки ставимо бомбу — гравець присідає і не може ходити (див. player.gd, bomb_planting).
+	if me != null:
+		me.set("bomb_planting", kind == KIND_PLANT and Input.is_action_pressed("shoot"))
 
 	# Поки E "зайнято" розмінуванням, меню зброї на E не відкривається (див. weapon_switch.gd).
 	Engine.set_meta("bomb_can_use", kind == KIND_DEFUSE)
@@ -223,7 +230,7 @@ func _update_prompt(kind: int, holding: bool, hint: String = "") -> void:
 		_bar.visible = false
 		return
 	var total := PLANT_TIME if kind == KIND_PLANT else DEFUSE_TIME
-	_prompt.text = ("Тримай [ЛКМ] — ПОСТАВИТИ БОМБУ" if kind == KIND_PLANT else "Тримай [E] — РОЗМІНУВАТИ")
+	_prompt.text = ("Hold [LMB] — PLANT THE BOMB" if kind == KIND_PLANT else "Hold [E] — DEFUSE")
 	_prompt.visible = true
 	_bar.visible = holding
 	_bar.max_value = total
@@ -257,10 +264,10 @@ func _hold_done(kind: int, pos: Vector3) -> void:
 	var h = _holders.get(id)
 	var total := PLANT_TIME if kind == KIND_PLANT else DEFUSE_TIME
 	if h == null or int(h["kind"]) != kind:
-		_deny(id, "сервер не бачить початку дії")
+		_deny(id, "server did not see the action start")
 		return
 	if float(Time.get_ticks_msec() - int(h["start"])) / 1000.0 < total * 0.7:
-		_deny(id, "занадто швидко")
+		_deny(id, "too fast")
 		return
 	var why := _check(id, kind, pos)
 	if why != "":
@@ -274,41 +281,41 @@ func _hold_done(kind: int, pos: Vector3) -> void:
 
 
 func _deny(id: int, why: String) -> void:
-	print("[bomb] відмова гравцю %d: %s" % [id, why])
+	print("[bomb] denied to player %d: %s" % [id, why])
 	_on_hold_fail.rpc_id(id, why)
 
 
 # "" — усе гаразд, інакше причина відмови.
 func _check(id: int, kind: int, pos: Vector3) -> String:
 	if world.state != world.State.PLAYING:
-		return "раунд не триває"
+		return "round is not in progress"
 	if not world.alive_players.get(id, false):
-		return "гравець мертвий"
+		return "player is dead"
 	var team := int(world.teams.get(id, -1))
 	if kind == KIND_PLANT:
 		if team != world.TEAM_T:
-			return "не команда T"
+			return "not team T"
 		if id != _carrier:
-			return "бомба не в цього гравця"
+			return "player doesn't have the bomb"
 		if planted:
-			return "бомба вже поставлена"
+			return "bomb already planted"
 		if _site_at(pos) == "":
-			return "поза бомбсайтом. " + _describe_sites(pos)
+			return "outside a bombsite. " + _describe_sites(pos)
 		if _height_above_floor(pos) > MAX_PLANT_HEIGHT:
-			return "гравець у повітрі"
+			return "player is in the air"
 		return ""
 	if team != world.TEAM_CT:
-		return "не команда CT"
+		return "not team CT"
 	if not planted:
-		return "бомби немає"
+		return "no bomb"
 	if not _near_bomb(pos):
-		return "далеко від бомби"
+		return "too far from the bomb"
 	return ""
 
 
 
 # Промінь вниз від позиції гравця (без гравців). Повертає позицію підлоги або пустий словник.
-func _floor_hit(p: Vector3) -> Dictionary:
+func _floor_hit(p: Vector3, start_up: float = 0.3) -> Dictionary:
 	var space: PhysicsDirectSpaceState3D = world.get_world_3d().direct_space_state
 	var exclude: Array[RID] = []
 	for pl in world.players_node.get_children():
@@ -316,7 +323,9 @@ func _floor_hit(p: Vector3) -> Dictionary:
 			exclude.append((co as CollisionObject3D).get_rid())
 		if pl is CollisionObject3D:
 			exclude.append((pl as CollisionObject3D).get_rid())
-	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * 0.3, p + Vector3.DOWN * 8.0, 0xFFFFFFFF)
+	# Лише геометрія карти: без шару гравців (2) і без хітбоксів (1<<9), щоб бомба не "чіплялась" за них.
+	var mask := 0xFFFFFFFF & ~(2 | (1 << 9))
+	var q := PhysicsRayQueryParameters3D.create(p + Vector3.UP * start_up, p + Vector3.DOWN * 8.0, mask)
 	q.exclude = exclude
 	return space.intersect_ray(q)
 
@@ -329,10 +338,18 @@ func _height_above_floor(p: Vector3) -> float:
 
 
 func _plant(id: int, p: Vector3) -> void:
-	# Ставимо бомбу на підлогу під гравцем.
-	var r := _floor_hit(p)
-	# Запасний варіант: початок гравця лежить на 1.2 м над підлогою (див. спавни у world.gd).
-	bomb_pos = (r["position"] as Vector3) if not r.is_empty() else (p + Vector3.DOWN * 1.2)
+	# Ставимо бомбу на підлогу під ногами гравця. Початок гравця — центр капсули, тож ноги = p.y - stand_height/2.
+	# Промінь пускаємо від рівня ніг (трохи вище), а не від голови — так він не зачепить нічого над підлогою.
+	var pl: Node = world.players_node.get_node_or_null(str(id))
+	var half := 1.0
+	if pl != null and "stand_height" in pl:
+		half = float(pl.get("stand_height")) * 0.5
+	var feet_y := p.y - half
+	var r := _floor_hit(Vector3(p.x, feet_y, p.z), 0.25)
+	if not r.is_empty():
+		bomb_pos = (r["position"] as Vector3)
+	else:
+		bomb_pos = Vector3(p.x, feet_y, p.z)
 	planted = true
 	_planter = id
 	_active = true
@@ -400,7 +417,7 @@ func _broadcast_carrier() -> void:
 
 @rpc("call_local", "reliable")
 func _on_hold_fail(why: String) -> void:
-	_show_notice("Сервер: " + why, Color(1.0, 0.4, 0.3))
+	_show_notice("Server: " + why, Color(1.0, 0.4, 0.3))
 
 
 @rpc("call_local", "reliable")
@@ -408,7 +425,7 @@ func _on_carrier(id: int) -> void:
 	var was := _carrier
 	_carrier = id
 	if id == multiplayer.get_unique_id() and was != id:
-		_show_notice("У ВАС БОМБА — натисніть [4]", Color(1.0, 0.85, 0.3))
+		_show_notice("YOU HAVE THE BOMB — press [4]", Color(1.0, 0.85, 0.3))
 
 
 # Раунд закінчився (смерть команди / кінець гри): бомба більше не тікає, модель лишається до нового раунду.
@@ -473,7 +490,7 @@ func _on_planted(pos: Vector3, site: String, _planter_id: int) -> void:
 	_left_client = BOMB_TIME
 	_make_visual(pos)
 	var where := "" if site == "?" or site == "" else " (%s)" % site
-	_show_notice("БОМБУ ВСТАНОВЛЕНО" + where, Color(1.0, 0.35, 0.25))
+	_show_notice("BOMB PLANTED" + where, Color(1.0, 0.35, 0.25))
 
 
 @rpc("call_local", "reliable")
@@ -490,14 +507,14 @@ func _on_defused() -> void:
 	if _light:
 		_light.light_color = Color(0.2, 1.0, 0.3)
 		_light.visible = true
-	_show_notice("БОМБУ РОЗМІНОВАНО", Color(0.4, 0.8, 1.0))
+	_show_notice("BOMB DEFUSED", Color(0.4, 0.8, 1.0))
 
 
 @rpc("call_local", "reliable")
 func _on_exploded(pos: Vector3) -> void:
 	_clear_visual()
 	_explosion_fx(pos)
-	_show_notice("БОМБА ВИБУХНУЛА", Color(1.0, 0.6, 0.15))
+	_show_notice("BOMB EXPLODED", Color(1.0, 0.6, 0.15))
 
 
 @rpc("call_local", "reliable")
@@ -523,6 +540,11 @@ func _make_visual(pos: Vector3) -> void:
 	if model != null:
 		model.scale = Vector3.ONE * BOMB_GROUND_SCALE
 		_visual.add_child(model)
+		# Антена в моделі висить над корпусом без з'єднання — ховаємо, щоб бомба не здавалась "літаючою".
+		for part in ["c4_antenna", "c4_antenna_tip"]:
+			var n := model.find_child(part, true, false)
+			if n is Node3D:
+				(n as Node3D).visible = false
 		_led = model.find_child("c4_led", true, false) as MeshInstance3D
 	else:
 		# Запасний варіант, якщо моделі немає: проста коробка.

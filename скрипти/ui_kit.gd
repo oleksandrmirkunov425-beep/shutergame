@@ -24,7 +24,7 @@ const SKIN_ART := {
 	"ak47_cyber_circuit": ART_AK_CYBER, "ak47_arctic_tactical": ART_AK_ARCTIC, "ak47_crimson_filigree": ART_AK_CRIMSON,
 }
 const MIRROR_SKINS := true   # відзеркалити арт скінів (дуло вправо)
-const SKIN_ON_MODEL := []   # для цієї зброї скін малюється на 3D-моделі (порожній масив = завжди плоский арт)
+const SKIN_ON_MODEL := ["awp"]   # для цієї зброї скін малюється на справжній 3D-моделі (проєкція збоку, як у грі); [] = завжди плоский арт
 const WEAPON_SHAPE := {"ak47": ART_AK, "awp": ART_AWP, "m4": ART_M4}   # силует стандартної зброї (форма та сама)
 
 # Скільки коштує «рівень» картки: від ціни. Можна задати явно в Economy: "rarity": "gold"/"red"/"purple"/"common".
@@ -290,18 +290,72 @@ class ModelPreview extends SubViewportContainer:
 	var _t := 0.0
 	var _ok := false
 
-	func _init(packed: PackedScene, skin: Texture2D = null) -> void:
+	var _thumb := false       # «знімок»: рендеримо кілька кадрів без гойдання й зупиняємось (текстуру можна ділити між багатьма картками)
+	var _thumb_frames := 0
+
+	func _init(packed: PackedScene, skin: Texture2D = null, thumb: bool = false) -> void:
 		_packed = packed
 		_skin = skin
+		_thumb = thumb
 		stretch = true
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-	func _ready() -> void:
+		# SubViewport створюємо одразу, щоб get_texture() можна було взяти до додавання в дерево.
 		_vp = SubViewport.new()
 		_vp.transparent_bg = true
 		_vp.own_world_3d = true
 		_vp.msaa_3d = Viewport.MSAA_4X
 		add_child(_vp)
+
+	func get_view_texture() -> Texture2D:
+		return _vp.get_texture()
+
+	# Скін на моделі без UV: та сама проєкція збоку, що й у грі (weapon_switch.gd -> _apply_weapon_skin).
+	func _apply_projected_skin(model: Node3D) -> void:
+		var meshes: Array = model.find_children("*", "MeshInstance3D", true, false)
+		if meshes.is_empty():
+			return
+		var box: AABB = (meshes[0] as MeshInstance3D).get_aabb()
+		for i in range(1, meshes.size()):
+			box = box.merge((meshes[i] as MeshInstance3D).get_aabb())
+		var long_i := 0
+		var wide_i := 0
+		for i in 3:
+			if box.size[i] > box.size[long_i]:
+				long_i = i
+			if box.size[i] < box.size[wide_i]:
+				wide_i = i
+		var up_i := 3 - long_i - wide_i
+		var u_axis := Vector3.ZERO
+		u_axis[long_i] = -1.0 if long_i == 2 else 1.0
+		var v_axis := Vector3.ZERO
+		v_axis[up_i] = -1.0
+		var side_axis := Vector3.ZERO
+		side_axis[wide_i] = 1.0
+		var mat := ShaderMaterial.new()
+		mat.shader = load("res://skins/skin_side_projection.gdshader") as Shader
+		mat.set_shader_parameter("skin_texture", _skin)
+		mat.set_shader_parameter("u_axis", u_axis)
+		mat.set_shader_parameter("v_axis", v_axis)
+		mat.set_shader_parameter("side_axis", side_axis)
+		mat.set_shader_parameter("u_range", _axis_range(box, u_axis))
+		mat.set_shader_parameter("v_range", _axis_range(box, v_axis))
+		# Ті самі налаштування, що й у грі для AWP (weapon_switch.gd -> AWP_SKIN_LOOK): без зайвого затемнення.
+		mat.set_shader_parameter("brightness", 1.3)
+		mat.set_shader_parameter("saturation", 1.08)
+		mat.set_shader_parameter("gamma_value", 1.0)
+		for mi in meshes:
+			(mi as MeshInstance3D).material_override = mat
+
+	func _axis_range(box: AABB, axis: Vector3) -> Vector2:
+		var lo := INF
+		var hi := -INF
+		for i in 8:
+			var d := axis.dot(box.get_endpoint(i))
+			lo = minf(lo, d)
+			hi = maxf(hi, d)
+		return Vector2(lo, maxf(hi - lo, 0.0001))
+
+	func _ready() -> void:
 
 		var env := Environment.new()
 		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -330,12 +384,7 @@ class ModelPreview extends SubViewportContainer:
 			return
 		orient.add_child(model)
 		if _skin != null:
-			var sm := StandardMaterial3D.new()
-			sm.albedo_texture = _skin
-			sm.roughness = 0.55
-			sm.metallic = 0.15
-			for mi in model.find_children("*", "MeshInstance3D", true, false):
-				(mi as MeshInstance3D).material_override = sm
+			_apply_projected_skin(model)
 
 		# Габарити по всіх видимих мешах (у координатах моделі).
 		var box := AABB()
@@ -384,10 +433,19 @@ class ModelPreview extends SubViewportContainer:
 			return
 		var aspect := size.x / size.y
 		# Ортогональна камера: size = висота кадру. Вмістити і довжину, і висоту (+ запас на гойдання).
-		_cam.size = maxf(_extent.x * 1.18 / aspect, _extent.y * 2.4)
+		_cam.size = maxf(_extent.x * 1.18 / aspect, _extent.y * (1.6 if _thumb else 2.4))
+		if _thumb:
+			_thumb_frames = 0
+			_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+			_pivot.rotation = Vector3(-0.1, -0.25, 0.0)
 
 	func _process(delta: float) -> void:
 		if not _ok:
+			return
+		if _thumb:
+			_thumb_frames += 1
+			if _thumb_frames == 4:   # кілька кадрів (шейдери, MSAA) і зупиняємо: текстура лишається
+				_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
 			return
 		_t += delta
 		_pivot.rotation = Vector3(-0.18, sin(_t * 0.9) * 0.55, 0.0)
@@ -741,6 +799,7 @@ class SpinCard extends SubViewportContainer:
 # Моделі зброї/ножів не лежать у патчі зі скінами, а живуть у проєкті (.glb/.tscn). Щоб не вгадувати шляхи,
 # один раз скануємо res:// і шукаємо файл за ключовими словами в назві. Свої шляхи можна вписати в MODEL_OVERRIDE.
 const MODEL_OVERRIDE := {
+	"awp": "res://awp/awp_shop.glb",   # модель AWP для магазину/рулетки (без UV — скін лягає проєкцією збоку)
 	# "bolisong": "res://models/bolisong.glb",
 }
 const MODEL_KEYWORDS := {
@@ -821,7 +880,7 @@ static func make_preview(model_key: String, skin_id: String, steel: Color = Colo
 	# AWP зі скіном: показуємо справжню 3D-модель гри зі скіном на ній, а не плоский арт у стилі CS2.
 	# Вимкнути/додати інші зброї: SKIN_ON_MODEL.
 	if skin_id != "" and allow_3d and SKIN_ON_MODEL.has(model_key):
-		var sp := "res://skins/%s.png" % skin_id
+		var sp := game_skin_path(skin_id)
 		var packed3d := find_model(model_key)
 		if packed3d != null and ResourceLoader.exists(sp):
 			return ModelPreview.new(packed3d, load(sp) as Texture2D)
@@ -856,6 +915,49 @@ static func skin_art(skin_id: String) -> Texture2D:
 			break
 	_art_cache[skin_id] = art
 	return art
+
+
+# Текстура скіна для накладання на 3D-модель: підігнана під силует моделі (skins/fit/), інакше оригінал skins/.
+static func game_skin_path(skin_id: String) -> String:
+	var fit := "res://skins/fit/%s.png" % skin_id
+	if ResourceLoader.exists(fit):
+		return fit
+	return "res://skins/%s.png" % skin_id
+
+
+# Мініатюра для списків (рулетка, вміст кейса): для AWP — «знімок» справжньої 3D-моделі зі скіном, для решти — як make_preview.
+# Один знімок на скін ділиться між усіма клітинками, тож 64 клітинки рулетки не створюють 64 в'юпортів.
+static var _thumb_cache: Dictionary = {}
+static var _thumb_host: CanvasLayer = null
+
+static func make_thumb(model_key: String, skin_id: String, steel: Color = Color("8e98ab")) -> Control:
+	if skin_id != "" and SKIN_ON_MODEL.has(model_key):
+		var tex := _thumb_texture(model_key, skin_id)
+		if tex != null:
+			return _tex(tex)
+	return make_preview(model_key, skin_id, steel, false)
+
+
+static func _thumb_texture(model_key: String, skin_id: String) -> Texture2D:
+	var key := model_key + "|" + skin_id
+	if _thumb_cache.has(key):
+		return _thumb_cache[key]
+	var sp := game_skin_path(skin_id)
+	var packed := find_model(model_key)
+	var tree := Engine.get_main_loop() as SceneTree
+	if packed == null or not ResourceLoader.exists(sp) or tree == null:
+		return null
+	if _thumb_host == null or not is_instance_valid(_thumb_host):
+		_thumb_host = CanvasLayer.new()
+		_thumb_host.layer = -64
+		tree.root.add_child.call_deferred(_thumb_host)
+	var pv := ModelPreview.new(packed, load(sp) as Texture2D, true)
+	pv.size = Vector2(768, 288)
+	pv.position = Vector2(-6000, -6000)   # поза екраном: потрібна лише текстура його в'юпорта
+	_thumb_host.add_child.call_deferred(pv)
+	var tex := pv.get_view_texture()
+	_thumb_cache[key] = tex
+	return tex
 
 
 static func _tex(t: Texture2D) -> TextureRect:

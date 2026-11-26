@@ -1872,15 +1872,51 @@ _data = {
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_50cep"]
 vertex_color_use_as_albedo = true
+albedo_color = Color(1.25, 1.25, 1.25, 1)
+roughness = 0.8
+disable_receive_shadows = true
+emission_enabled = true
+emission = Color(0.07, 0.1, 0.2, 1)
+emission_energy_multiplier = 1.0
+rim_enabled = true
+rim = 0.35
+rim_tint = 0.6
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8yvht"]
 vertex_color_use_as_albedo = true
+albedo_color = Color(1.25, 1.25, 1.25, 1)
+roughness = 0.8
+disable_receive_shadows = true
+emission_enabled = true
+emission = Color(0.07, 0.1, 0.2, 1)
+emission_energy_multiplier = 1.0
+rim_enabled = true
+rim = 0.35
+rim_tint = 0.6
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lagn4"]
 vertex_color_use_as_albedo = true
+albedo_color = Color(1.25, 1.25, 1.25, 1)
+roughness = 0.8
+disable_receive_shadows = true
+emission_enabled = true
+emission = Color(0.07, 0.1, 0.2, 1)
+emission_energy_multiplier = 1.0
+rim_enabled = true
+rim = 0.35
+rim_tint = 0.6
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_x8k1v"]
 vertex_color_use_as_albedo = true
+albedo_color = Color(1.25, 1.25, 1.25, 1)
+roughness = 0.8
+disable_receive_shadows = true
+emission_enabled = true
+emission = Color(0.07, 0.1, 0.2, 1)
+emission_energy_multiplier = 1.0
+rim_enabled = true
+rim = 0.35
+rim_tint = 0.6
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_2cgup"]
 properties/0/path = NodePath(".:position")

@@ -93,6 +93,15 @@ const ARMS_SCENE_T := preload("res://playersModels/terrorist_t1_arms.glb")
 const ARMS_SCENE_CT := preload("res://playersModels/operative_ct1_arms.glb")
 const ARM_PARTS := ["arm_L", "hand_L", "arm_R", "hand_R"]
 
+# Множник яскравості рук від першої особи (більше = світліше під сонцем).
+const ARMS_ALBEDO_BOOST := 1.6      # яскравість рук на сонці
+const ARMS_SHADE_FACTOR := 0.55     # у скільки разів руки темніші в тіні (0.55 = 55%)
+const ARMS_SHADE_DEBUG := true      # друкує в Output, коли руки заходять у тінь/на сонце
+const ARMS_SHADE_SPEED := 8.0       # швидкість переходу сонце <-> тінь
+var _arms_light_k: float = 1.0
+var _arms_shade_timer: float = 0.0
+var _arms_in_shade: bool = false
+var _sun: DirectionalLight3D
 var _mat_voxel: StandardMaterial3D
 var _mat_glow: StandardMaterial3D
 
@@ -111,6 +120,7 @@ var crouching: bool = false:
 		if _capsule != null:
 			_apply_capsule()
 var _capsule: CapsuleShape3D
+var bomb_planting: bool = false   # ставить BombSystem, поки гравець тримає ЛКМ на бомбсайті: присід + стоїмо на місці
 var _crouch_k: float = 1.0   # поточний візуальний масштаб по висоті (1 = стоїть)
 var _model_base: Dictionary = {}   # стояча поза моделей (запам'ятовується на самому початку _ready)
 
@@ -252,10 +262,10 @@ func _physics_process(delta: float) -> void:
 		move_and_slide()
 		return
 
-	var input_dir := Vector2.ZERO if paused else Input.get_vector("a", "d", "w", "s")
+	var input_dir := Vector2.ZERO if (paused or bomb_planting) else Input.get_vector("a", "d", "w", "s")
 	var wish_dir := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 
-	var is_crouching := _update_crouch(Input.is_key_pressed(KEY_CTRL) and not paused)
+	var is_crouching := _update_crouch((Input.is_key_pressed(KEY_CTRL) and not paused) or bomb_planting)
 	var is_walking := Input.is_key_pressed(KEY_SHIFT) and not is_crouching and not paused
 
 	var target_head_y := _head_base_y - (crouch_head_offset if is_crouching else 0.0)
@@ -267,7 +277,7 @@ func _physics_process(delta: float) -> void:
 	elif is_walking:
 		target_speed = walk_speed
 
-	if Input.is_action_just_pressed("ui_accept") and not paused:
+	if Input.is_action_just_pressed("ui_accept") and not paused and not bomb_planting:
 		_jump_buffer_timer = jump_buffer_time
 	else:
 		_jump_buffer_timer = maxf(_jump_buffer_timer - delta, 0.0)
@@ -333,6 +343,8 @@ func _apply_capsule() -> void:
 
 # Плавно підганяє модель і хітбокси під присід (працює на кожній копії гравця).
 func _process(delta: float) -> void:
+	if is_multiplayer_authority():
+		_update_arms_shade(delta)
 	if is_dead:
 		return
 	var target := (crouch_height / stand_height) if crouching else 1.0
@@ -483,7 +495,7 @@ func _die() -> void:
 	collision_mask &= ~player_collision_layer
 
 	if is_multiplayer_authority() and health_label:
-		health_label.text = "Ви загинули..."
+		health_label.text = "You died..."
 
 	if is_multiplayer_authority() or bool(get_meta("is_bot", false)):
 		var world := _get_world()
@@ -586,6 +598,38 @@ func _apply_model_skin() -> void:
 		(mi as MeshInstance3D).set_surface_override_material(0, mat)
 
 
+# Руки від першої особи темніють у тіні: перевіряємо променем у бік сонця, чи закрите воно геометрією.
+func _update_arms_shade(delta: float) -> void:
+	if _mat_voxel == null or arms_node == null or not arms_node.visible:
+		return
+	if _sun == null or not is_instance_valid(_sun):
+		_sun = get_tree().root.find_child("DirectionalLight3D2", true, false) as DirectionalLight3D
+		if _sun == null:
+			return
+	_arms_shade_timer -= delta
+	if _arms_shade_timer <= 0.0:
+		_arms_shade_timer = 0.1
+		# Починаємо трохи вище голови й дивимось тільки на статичну геометрію карти (шар 1),
+		# щоб боти, гравці й власне тіло не давали хибної "тіні".
+		var from := camera.global_position + Vector3.UP * 0.4
+		var to := from + _sun.global_transform.basis.z * 60.0   # +Z світла дивиться на сонце
+		var q := PhysicsRayQueryParameters3D.create(from, to, 1)
+		q.exclude = [get_rid()]
+		q.collide_with_areas = false
+		var hit := get_world_3d().direct_space_state.intersect_ray(q)
+		var shade := not hit.is_empty()
+		if shade != _arms_in_shade and ARMS_SHADE_DEBUG:
+			print("[arms-shade] in_shade=", shade, " hit=", hit.get("collider"), " at ", hit.get("position"))
+		_arms_in_shade = shade
+	var target := ARMS_SHADE_FACTOR if _arms_in_shade else 1.0
+	_arms_light_k = lerpf(_arms_light_k, target, clampf(ARMS_SHADE_SPEED * delta, 0.0, 1.0))
+	var v := ARMS_ALBEDO_BOOST * _arms_light_k
+	var c := Color(v, v, v)
+	_mat_voxel.albedo_color = c
+	_mat_glow.albedo_color = c
+	_mat_glow.emission_energy_multiplier = 0.6 * _arms_light_k
+
+
 # Підміняє меші/матеріали рук під команду. Вузол "arms" та його
 # arm_L/hand_L/arm_R/hand_R лишаються тими самими -> анімації спільні.
 func _apply_arms_skin() -> void:
@@ -593,12 +637,19 @@ func _apply_arms_skin() -> void:
 		_mat_voxel = StandardMaterial3D.new()
 		_mat_voxel.vertex_color_use_as_albedo = true
 		_mat_voxel.roughness = 0.85
+		# Руки реагують на світло сцени (сонце + ambient): це звичайний lit-матеріал.
+		# Вершинні кольори рук дуже темні, тому підсилюємо albedo, щоб освітлення було видно.
+		_mat_voxel.albedo_color = Color(ARMS_ALBEDO_BOOST, ARMS_ALBEDO_BOOST, ARMS_ALBEDO_BOOST)
+		_mat_voxel.rim_enabled = true
+		_mat_voxel.rim = 0.25
+		_mat_voxel.rim_tint = 0.5
 		_mat_glow = StandardMaterial3D.new()
 		_mat_glow.vertex_color_use_as_albedo = true
 		_mat_glow.roughness = 0.2
+		_mat_glow.albedo_color = Color(ARMS_ALBEDO_BOOST, ARMS_ALBEDO_BOOST, ARMS_ALBEDO_BOOST)
 		_mat_glow.emission_enabled = true
 		_mat_glow.emission = Color(0.25, 0.55, 0.85)
-		_mat_glow.emission_energy_multiplier = 1.4
+		_mat_glow.emission_energy_multiplier = 0.6
 
 	var src: Node = (ARMS_SCENE_CT if team == Team.CT else ARMS_SCENE_T).instantiate()
 	# Імпортовані GLB можуть мати дублікати arm_L/arm_R у скелеті та візуальному меші.

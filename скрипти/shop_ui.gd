@@ -9,7 +9,7 @@ const CASE_UI_SCRIPT := preload("res://скрипти/case_ui.gd")
 signal closed
 
 const WEAPON_TITLE := {"ak47": "AK-47", "m4": "M4", "awp": "AWP"}
-const TABS := [["knife", "НОЖІ"], ["ak47", "АК-47"], ["m4", "M4"], ["awp", "AWP"], ["case", "КЕЙСИ"]]
+const TABS := [["knife", "KNIVES"], ["ak47", "AK-47"], ["m4", "M4"], ["awp", "AWP"], ["case", "CASES"]]
 
 # Чи можна зараз купувати/вибирати (є звʼязок із сервером). Задає menu.gd.
 var online_check: Callable = Callable()
@@ -63,6 +63,7 @@ func build() -> void:
 	_case_ui = CASE_UI_SCRIPT.new()
 	add_child(_case_ui)
 	_case_ui.build()
+	_case_ui.finished.connect(_on_case_finished)
 	_case_ui.closed.connect(refresh)
 
 
@@ -72,7 +73,7 @@ func _build_header() -> Control:
 	h.custom_minimum_size = Vector2(0, 72)
 
 	var back := Button.new()
-	back.text = "‹  НАЗАД"
+	back.text = "‹  BACK"
 	Kit.style_button(back, "ghost", 22)
 	back.anchor_top = 0.5
 	back.anchor_bottom = 0.5
@@ -90,7 +91,7 @@ func _build_header() -> Control:
 	plate.offset_top = -22
 	plate.offset_bottom = 66
 	h.add_child(plate)
-	var title := Kit.label("МАГАЗИН", 46, Kit.C_TEXT, true, HORIZONTAL_ALIGNMENT_CENTER, 4)
+	var title := Kit.label("SHOP", 46, Kit.C_TEXT, true, HORIZONTAL_ALIGNMENT_CENTER, 4)
 	title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	plate.add_child(title)
@@ -238,7 +239,7 @@ func _items(tab: String) -> Array:
 	var cur := _current_skin(tab)
 	out.append({
 		"key": tab + ":", "kind": "default", "id": "", "weapon": tab, "model": tab, "skin": "",
-		"line1": title, "line2": "СТАНДАРТНИЙ", "full": "%s | СТАНДАРТНИЙ" % title,
+		"line1": title, "line2": "STANDARD", "full": "%s | STANDARD" % title,
 		"price": 0, "owned": true, "equipped": cur == "", "rarity": "common"})
 	for sid in Economy.SKIN_ORDER:
 		var info: Dictionary = Economy.WEAPON_SKINS[sid]
@@ -288,6 +289,16 @@ func _act(it: Dictionary) -> void:
 				Economy.request_buy_skin.rpc_id(1, it["id"])
 
 
+# Після відкриття кейса повертаємось у магазин на вкладку виграного предмета й виділяємо його.
+func _on_case_finished(item_id: String) -> void:
+	var info := Economy.item_info(item_id)
+	if info.is_empty():
+		return
+	var tab := str(info["weapon"])   # "knife", "ak47", "awp"...
+	_set_tab(tab)
+	_selected = "%s:%s" % [tab, item_id]
+
+
 func _open_case(cid: String) -> void:
 	_case_ui.online_check = online_check
 	_case_ui.open(cid)
@@ -309,14 +320,14 @@ func _case_preview(cid: String) -> Control:
 # Текст і вигляд головної кнопки дії для предмета.
 func _action_for(it: Dictionary) -> Array:   # [текст, вид, вимкнена?]
 	if it["kind"] == "case":
-		return ["ВІДКРИТИ КЕЙС", "primary", false]
+		return ["OPEN CASE", "primary", false]
 	if it["kind"] == "knife" or it["kind"] == "default":
 		if it["equipped"]:
-			return ["ОБРАНО", "dim", true]
-		return ["ОБРАТИ", "primary", false] if it["owned"] else ["КУПИТИ — %d" % it["price"], "primary", false]
+			return ["EQUIPPED", "dim", true]
+		return ["EQUIP", "primary", false] if it["owned"] else ["BUY — %d" % it["price"], "primary", false]
 	if it["equipped"]:
-		return ["ЗНЯТИ СКІН", "ghost", false]
-	return ["ОБРАТИ", "primary", false] if it["owned"] else ["КУПИТИ — %d" % it["price"], "primary", false]
+		return ["REMOVE SKIN", "ghost", false]
+	return ["EQUIP", "primary", false] if it["owned"] else ["BUY — %d" % it["price"], "primary", false]
 
 
 # ---------------------------------------------------------------- показ
@@ -432,13 +443,13 @@ func _make_card(it: Dictionary) -> Control:
 		var enough: bool = Economy.view_coins >= int(it["price"])
 		price_row.add_child(Kit.label(str(it["price"]), 24, Kit.C_GOLD if enough else Kit.C_RED_HI))
 	else:
-		price_row.add_child(Kit.label("З КЕЙСА" if it.get("from_case", false) else ("Є У ТЕБЕ" if it["price"] > 0 else "БЕЗКОШТОВНО"), 16, Kit.C_MUTED, true))
+		price_row.add_child(Kit.label("FROM CASE" if it.get("from_case", false) else ("OWNED" if it["price"] > 0 else "FREE"), 16, Kit.C_MUTED, true))
 
 	var btns := HBoxContainer.new()
 	btns.add_theme_constant_override("separation", 8)
 	v.add_child(btns)
 	var state_b := Button.new()
-	state_b.text = "ОБРАНО"
+	state_b.text = "EQUIPPED"
 	state_b.disabled = true
 	state_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	state_b.custom_minimum_size = Vector2(0, 38)
@@ -450,7 +461,7 @@ func _make_card(it: Dictionary) -> Control:
 
 	var act := _action_for(it)
 	var buy_b := Button.new()
-	buy_b.text = "КУПИТИ" if not it["owned"] else ("ЗНЯТИ" if (it["equipped"] and it["kind"] == "skin") else "ОБРАТИ")
+	buy_b.text = "BUY" if not it["owned"] else ("REMOVE" if (it["equipped"] and it["kind"] == "skin") else "EQUIP")
 	buy_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buy_b.custom_minimum_size = Vector2(0, 38)
 	buy_b.disabled = bool(act[2]) or not _online()
@@ -512,7 +523,7 @@ func _make_case_card(it: Dictionary) -> Control:
 	price_row.add_child(Kit.label(str(it["price"]), 24, Kit.C_GOLD if enough else Kit.C_RED_HI))
 
 	var open_b := Button.new()
-	open_b.text = "ВІДКРИТИ"
+	open_b.text = "OPEN"
 	open_b.custom_minimum_size = Vector2(0, 40)
 	Kit.style_button(open_b, "primary", 16)
 	open_b.pressed.connect(func():
@@ -544,23 +555,23 @@ func _refresh_detail() -> void:
 		_detail_info.remove_child(c)
 		c.queue_free()
 	if it["kind"] == "case":
-		_detail_info.add_child(_info_row("ТИП", "КЕЙС", Kit.C_TEXT))
-		_detail_info.add_child(_info_row("ЦІНА", "%d" % int(it["price"]), Kit.C_GOLD))
-		_detail_info.add_child(_info_row("ПРЕДМЕТІВ", "%d" % (Economy.CASES[it["id"]]["items"] as Array).size(), Kit.C_TEXT))
+		_detail_info.add_child(_info_row("TYPE", "CASE", Kit.C_TEXT))
+		_detail_info.add_child(_info_row("PRICE", "%d" % int(it["price"]), Kit.C_GOLD))
+		_detail_info.add_child(_info_row("ITEMS", "%d" % (Economy.CASES[it["id"]]["items"] as Array).size(), Kit.C_TEXT))
 		var cbar := ColorRect.new()
 		cbar.color = rc
 		cbar.custom_minimum_size = Vector2(0, 3)
 		_detail_info.add_child(cbar)
-		_detail_btn.text = "ВІДКРИТИ КЕЙС"
+		_detail_btn.text = "OPEN CASE"
 		_detail_btn.disabled = false
 		Kit.style_button(_detail_btn, "primary", 32)
 		return
-	var status := "ОБРАНО" if it["equipped"] else ("КУПЛЕНО" if it["owned"] else "НЕ КУПЛЕНО")
-	_detail_info.add_child(_info_row("СТАТУС", status, Kit.C_GOLD if it["equipped"] else Kit.C_TEXT))
-	var kind_name := "НІЖ" if it["kind"] == "knife" else ("СКІН" if it["kind"] == "skin" else "БАЗОВИЙ ВИГЛЯД")
-	_detail_info.add_child(_info_row("ТИП", kind_name, Kit.C_TEXT))
+	var status := "EQUIPPED" if it["equipped"] else ("PURCHASED" if it["owned"] else "NOT PURCHASED")
+	_detail_info.add_child(_info_row("STATUS", status, Kit.C_GOLD if it["equipped"] else Kit.C_TEXT))
+	var kind_name := "KNIFE" if it["kind"] == "knife" else ("SKIN" if it["kind"] == "skin" else "DEFAULT LOOK")
+	_detail_info.add_child(_info_row("TYPE", kind_name, Kit.C_TEXT))
 	var price_text := "—" if it["owned"] or it["price"] == 0 else "%d" % it["price"]
-	_detail_info.add_child(_info_row("ЦІНА", price_text, Kit.C_GOLD if price_text != "—" else Kit.C_MUTED))
+	_detail_info.add_child(_info_row("PRICE", price_text, Kit.C_GOLD if price_text != "—" else Kit.C_MUTED))
 	var bar := ColorRect.new()
 	bar.color = rc
 	bar.custom_minimum_size = Vector2(0, 3)
@@ -571,8 +582,8 @@ func _refresh_detail() -> void:
 	_detail_btn.disabled = bool(act[2]) or not _online()
 	Kit.style_button(_detail_btn, act[1], 32)
 	if not _online():
-		_msg.text = "Немає звʼязку з сервером — купувати й вибирати поки не можна."
-	elif _msg.text.begins_with("Немає звʼязку"):
+		_msg.text = "No connection to the server — buying and equipping isn't available right now."
+	elif _msg.text.begins_with("No connection"):
 		_msg.text = ""
 
 

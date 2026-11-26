@@ -20,7 +20,7 @@ offset_left = 700.0
 offset_top = 300.0
 offset_right = 950.0
 offset_bottom = 350.0
-text = "створити гру"
+text = "create game"
 
 [node name="IPInput" type="LineEdit" parent="Networkpanel" unique_id=1327078538]
 layout_mode = 0
@@ -28,7 +28,7 @@ offset_left = 700.0
 offset_top = 360.0
 offset_right = 950.0
 offset_bottom = 410.0
-placeholder_text = "IP хоста"
+placeholder_text = "Host IP"
 
 [node name="JoinButton" type="Button" parent="Networkpanel" unique_id=1083182285]
 layout_mode = 0
@@ -36,7 +36,7 @@ offset_left = 700.0
 offset_top = 420.0
 offset_right = 950.0
 offset_bottom = 470.0
-text = "приєднатися"
+text = "join"
 
 [node name="StatusLabel" type="Label" parent="Networkpanel" unique_id=1579319186]
 layout_mode = 0

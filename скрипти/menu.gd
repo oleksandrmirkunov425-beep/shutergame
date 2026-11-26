@@ -37,8 +37,8 @@ func _ready() -> void:
 
 	host_button.hide()
 	ip_input.visible = OS.is_debug_build()  # поле адреси лише для локальних тестів
-	ip_input.placeholder_text = "Адреса сервера (порожньо = онлайн-сервер)"
-	join_button.text = "Скасувати"
+	ip_input.placeholder_text = "Server address (empty = online server)"
+	join_button.text = "Cancel"
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 	join_button.pressed.connect(_on_cancel_pressed)
@@ -134,7 +134,7 @@ func _bg_connect() -> void:
 func _make_nick_input() -> void:
 	nick_input = LineEdit.new()
 	nick_input.max_length = 16
-	nick_input.placeholder_text = "Введи нік"
+	nick_input.placeholder_text = "Enter nickname"
 	var current: String = str(Engine.get_meta("player_nick", ""))
 	if current == "":
 		current = "%s%d" % [DEFAULT_NICK_PREFIX, randi_range(100, 999)]
@@ -185,7 +185,7 @@ func _make_settings_ui() -> void:
 	margin.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Налаштування"
+	title.text = "Settings"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
 	vbox.add_child(title)
@@ -198,7 +198,7 @@ func _make_settings_ui() -> void:
 
 	var tab_group := ButtonGroup.new()
 	var mouse_tab := Button.new()
-	mouse_tab.text = "Миша"
+	mouse_tab.text = "Mouse"
 	mouse_tab.toggle_mode = true
 	mouse_tab.button_group = tab_group
 	mouse_tab.button_pressed = true
@@ -206,7 +206,7 @@ func _make_settings_ui() -> void:
 	tabs.add_child(mouse_tab)
 
 	var crosshair_tab := Button.new()
-	crosshair_tab.text = "Приціл"
+	crosshair_tab.text = "Crosshair"
 	crosshair_tab.toggle_mode = true
 	crosshair_tab.button_group = tab_group
 	crosshair_tab.custom_minimum_size = Vector2(180, 40)
@@ -217,11 +217,11 @@ func _make_settings_ui() -> void:
 	mouse_page.add_theme_constant_override("separation", 14)
 	vbox.add_child(mouse_page)
 
-	_sensitivity_slider = _add_mouse_slider_row(mouse_page, "Чутливість миші", 0.1, 5.0, 0.05, SETTINGS_SCRIPT.sensitivity)
-	_scope_slider = _add_mouse_slider_row(mouse_page, "Множник у прицілі", 0.1, 3.0, 0.05, SETTINGS_SCRIPT.scope_sensitivity_multiplier)
+	_sensitivity_slider = _add_mouse_slider_row(mouse_page, "Mouse sensitivity", 0.1, 5.0, 0.05, SETTINGS_SCRIPT.sensitivity)
+	_scope_slider = _add_mouse_slider_row(mouse_page, "Scope multiplier", 0.1, 3.0, 0.05, SETTINGS_SCRIPT.scope_sensitivity_multiplier)
 
 	var note := Label.new()
-	note.text = "Множник прицілу додатково застосовується під час зуму снайперської гвинтівки."
+	note.text = "The scope multiplier is additionally applied while zoomed in with the sniper rifle."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	mouse_page.add_child(note)
 
@@ -242,22 +242,22 @@ func _make_settings_ui() -> void:
 	bg.add_child(preview)
 
 	var sliders: Array = []   # [слайдер, геттер] — щоб оновити після "Скинути"
-	sliders.append([_add_slider_row(crosshair_page, "Довжина", 1.0, 30.0, 1.0, CrosshairConfig.length, func(v): CrosshairConfig.length = v), func(): return CrosshairConfig.length])
-	sliders.append([_add_slider_row(crosshair_page, "Товщина", 1.0, 8.0, 1.0, CrosshairConfig.thickness, func(v): CrosshairConfig.thickness = v), func(): return CrosshairConfig.thickness])
-	sliders.append([_add_slider_row(crosshair_page, "Проміжок", 0.0, 25.0, 1.0, CrosshairConfig.gap, func(v): CrosshairConfig.gap = v), func(): return CrosshairConfig.gap])
-	sliders.append([_add_slider_row(crosshair_page, "Розмір крапки", 1.0, 10.0, 1.0, CrosshairConfig.dot_size, func(v): CrosshairConfig.dot_size = v), func(): return CrosshairConfig.dot_size])
-	sliders.append([_add_slider_row(crosshair_page, "Прозорість", 0.1, 1.0, 0.05, CrosshairConfig.opacity, func(v): CrosshairConfig.opacity = v), func(): return CrosshairConfig.opacity])
+	sliders.append([_add_slider_row(crosshair_page, "Length", 1.0, 30.0, 1.0, CrosshairConfig.length, func(v): CrosshairConfig.length = v), func(): return CrosshairConfig.length])
+	sliders.append([_add_slider_row(crosshair_page, "Thickness", 1.0, 8.0, 1.0, CrosshairConfig.thickness, func(v): CrosshairConfig.thickness = v), func(): return CrosshairConfig.thickness])
+	sliders.append([_add_slider_row(crosshair_page, "Gap", 0.0, 25.0, 1.0, CrosshairConfig.gap, func(v): CrosshairConfig.gap = v), func(): return CrosshairConfig.gap])
+	sliders.append([_add_slider_row(crosshair_page, "Dot size", 1.0, 10.0, 1.0, CrosshairConfig.dot_size, func(v): CrosshairConfig.dot_size = v), func(): return CrosshairConfig.dot_size])
+	sliders.append([_add_slider_row(crosshair_page, "Opacity", 0.1, 1.0, 0.05, CrosshairConfig.opacity, func(v): CrosshairConfig.opacity = v), func(): return CrosshairConfig.opacity])
 
 	var checks := HBoxContainer.new()
 	checks.add_theme_constant_override("separation", 24)
 	crosshair_page.add_child(checks)
 	var dot_check := CheckBox.new()
-	dot_check.text = "Крапка в центрі"
+	dot_check.text = "Center dot"
 	dot_check.button_pressed = CrosshairConfig.dot
 	dot_check.toggled.connect(func(on: bool): CrosshairConfig.dot = on; CrosshairConfig.version += 1)
 	checks.add_child(dot_check)
 	var outline_check := CheckBox.new()
-	outline_check.text = "Контур"
+	outline_check.text = "Outline"
 	outline_check.button_pressed = CrosshairConfig.outline
 	outline_check.toggled.connect(func(on: bool): CrosshairConfig.outline = on; CrosshairConfig.version += 1)
 	checks.add_child(outline_check)
@@ -266,7 +266,7 @@ func _make_settings_ui() -> void:
 	color_row.add_theme_constant_override("separation", 12)
 	crosshair_page.add_child(color_row)
 	var color_label := Label.new()
-	color_label.text = "Колір"
+	color_label.text = "Color"
 	color_label.custom_minimum_size = Vector2(160, 0)
 	color_row.add_child(color_label)
 	var picker := ColorPickerButton.new()
@@ -288,7 +288,7 @@ func _make_settings_ui() -> void:
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(buttons)
 	var reset_btn := Button.new()
-	reset_btn.text = "Скинути"
+	reset_btn.text = "Reset"
 	reset_btn.custom_minimum_size = Vector2(140, 44)
 	reset_btn.pressed.connect(func():
 		_sensitivity_slider.value = SETTINGS_SCRIPT.DEFAULT_SENSITIVITY
@@ -302,7 +302,7 @@ func _make_settings_ui() -> void:
 		picker.color = CrosshairConfig.color)
 	buttons.add_child(reset_btn)
 	var done_btn := Button.new()
-	done_btn.text = "Готово"
+	done_btn.text = "Done"
 	done_btn.custom_minimum_size = Vector2(140, 44)
 	done_btn.pressed.connect(func():
 		SETTINGS_SCRIPT.sensitivity = _sensitivity_slider.value
@@ -391,7 +391,7 @@ func _start_online_search(mode: String) -> void:
 	_attempts = 0
 	_show_search(true)
 	if _online():
-		_set_status("Пошук гравців для %s..." % ("2 × 2" if _selected_mode == "2v2" else "1 × 1"))
+		_set_status("Searching for players (%s)..." % ("2 × 2" if _selected_mode == "2v2" else "1 × 1"))
 		Matchmaker.find_match(_selected_mode)
 		return
 	_connect()
@@ -399,7 +399,7 @@ func _start_online_search(mode: String) -> void:
 
 func _connect() -> void:
 	_attempts += 1
-	_set_status("Підключення до сервера... (безкоштовний сервер може прокидатись до хвилини)")
+	_set_status("Connecting to the server... (the free server may take up to a minute to wake up)")
 	Network.join_game(ip_input.text.strip_edges())
 
 
@@ -407,7 +407,7 @@ func _on_search_progress(found: int, total: int, mode: String) -> void:
 	if not _searching or mode != _selected_mode:
 		return
 	var mode_name := "2 × 2" if mode == "2v2" else "1 × 1"
-	_set_status("Знайдено гравців: %d з %d\nРежим: %s" % [found, total, mode_name])
+	_set_status("Players found: %d of %d\nMode: %s" % [found, total, mode_name])
 
 
 func _on_connected() -> void:
@@ -418,7 +418,7 @@ func _on_connected() -> void:
 		Engine.remove_meta("pending_bot_win")
 	if not _searching:
 		return
-	_set_status("Пошук гравців для %s..." % ("2 × 2" if _selected_mode == "2v2" else "1 × 1"))
+	_set_status("Searching for players (%s)..." % ("2 × 2" if _selected_mode == "2v2" else "1 × 1"))
 	Matchmaker.find_match(_selected_mode)
 
 
@@ -428,9 +428,9 @@ func _on_connection_failed() -> void:
 		return
 	if _attempts >= MAX_CONNECT_ATTEMPTS:
 		_searching = false
-		_set_status("Не вдалося підключитись до сервера. Спробуй ще раз.")
+		_set_status("Could not connect to the server. Try again.")
 		return
-	_set_status("Сервер прокидається... спроба %d/%d" % [_attempts + 1, MAX_CONNECT_ATTEMPTS])
+	_set_status("Server is waking up... attempt %d/%d" % [_attempts + 1, MAX_CONNECT_ATTEMPTS])
 	await get_tree().create_timer(2.0).timeout
 	if _searching:
 		_connect()

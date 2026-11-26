@@ -78,7 +78,8 @@ func _setup_graphics() -> void:
 	vp.msaa_3d = Viewport.MSAA_4X
 	vp.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA
 	vp.use_debanding = true
-	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM)
+	vp.anisotropic_filtering_level = Viewport.ANISOTROPY_8X   # чіткіші текстури під кутом (земля, стіни)
+	RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH)
 	RenderingServer.directional_shadow_atlas_set_size(4096, true)
 
 
@@ -99,13 +100,13 @@ func _ready() -> void:
 	players_node = room.get_node("players")
 
 	spawn_points = _collect_spawn_points()
-	print("[world] кімната %d: режим=%s, гравців=%d, група спавнів=%s, точок=%d" % [room_id, game_mode, room_peers.size(), _get_spawn_root().name if _get_spawn_root() else "—", spawn_points.size()])
+	print("[world] room %d: mode=%s, players=%d, spawn group=%s, points=%d" % [room_id, game_mode, room_peers.size(), _get_spawn_root().name if _get_spawn_root() else "—", spawn_points.size()])
 	for i in spawn_points.size():
-		print("[world] точка #%d: %s  pos=%s" % [i, spawn_points[i].name, str(spawn_points[i].global_position)])
+		print("[world] point #%d: %s  pos=%s" % [i, spawn_points[i].name, str(spawn_points[i].global_position)])
 	if game_mode == "2v2" and spawn_points.size() < 4:
-		push_warning("world.gd: режим 2v2, але точок спавну лише %d (потрібно 4). Перевір SpawnPoints/WingmanSpawns у player.tscn!" % spawn_points.size())
+		push_warning("world.gd: 2v2 mode, but only %d spawn points (4 needed). Check SpawnPoints/WingmanSpawns in player.tscn!" % spawn_points.size())
 	if spawn_points.is_empty():
-		push_error("world.gd: не знайдено жодної точки спавну в SpawnPoints/DesertSpawns або SpawnPoints/WingmanSpawns!")
+		push_error("world.gd: no spawn points found in SpawnPoints/DesertSpawns or SpawnPoints/WingmanSpawns!")
 
 	_countdown_timer = Timer.new()
 	_countdown_timer.wait_time = 1.0
@@ -215,7 +216,7 @@ func _snap_oasis_spawns_to_ground() -> void:
 		return
 	var oasis := get_node_or_null("../wingman_oasis_large") as Node3D
 	if oasis == null:
-		push_error("world.gd: вузол wingman_oasis_large не знайдено — спавни oasis не можна прив'язати до карти!")
+		push_error("world.gd: node wingman_oasis_large not found — oasis spawns can't be attached to the map!")
 		return
 	var space := get_world_3d().direct_space_state
 	var mask := 0xFFFFFFFF & ~2   # усі шари, крім шару гравців
@@ -231,7 +232,7 @@ func _snap_oasis_spawns_to_ground() -> void:
 				hit_y = (r["position"] as Vector3).y
 				break
 		if is_nan(hit_y):
-			push_warning("world.gd: під точкою спавну '%s' (%s) НЕМАЄ колізії oasis — гравці тут провалюватимуться. Перевір, що в glb є колізія і що точка стоїть над картою." % [sp.name, str(pos)])
+			push_warning("world.gd: there is NO oasis collision under spawn point '%s' (%s) — players will fall through here. Check that the glb has collision and that the point is above the map." % [sp.name, str(pos)])
 			continue
 		# Початок гравця — центр капсули, тому піднімаємо на пів-висоти + запас.
 		sp.global_position = Vector3(pos.x, hit_y + 1.2, pos.z)
@@ -258,7 +259,7 @@ func _hide_collision_meshes(map_node: Node) -> void:
 		if String(mi.name).to_lower().contains("collision") or not has_material:
 			mi.visible = false
 			hidden += 1
-	_map_fix_info = "сховано колізійних мешів: %d" % hidden
+	_map_fix_info = "hidden collision meshes: %d" % hidden
 	print("[map-fix] ", _map_fix_info)
 
 
@@ -595,7 +596,7 @@ func _spawn_index_for(id: int) -> int:
 
 func _spawn_or_respawn_player(id: int, spawn_index: int) -> void:
 	var spawn_point: Node3D = spawn_points[spawn_index % spawn_points.size()]
-	print("[spawn] кімната %d режим=%s oasis=%s id=%d команда=%s індекс=%d -> %s pos=%s" % [room_id, game_mode, str(_use_oasis), id, str(teams.get(id, "-")), spawn_index, spawn_point.name, str(spawn_point.global_position)])
+	print("[spawn] room %d mode=%s oasis=%s id=%d team=%s index=%d -> %s pos=%s" % [room_id, game_mode, str(_use_oasis), id, str(teams.get(id, "-")), spawn_index, spawn_point.name, str(spawn_point.global_position)])
 	if bot_match and id == BOT_ID:
 		var bot_existing := players_node.get_node_or_null(str(BOT_ID))
 		if bot_existing:
@@ -651,7 +652,7 @@ func _rpc_spawn_player(id: int, t: Transform3D) -> void:
 	if players_node.get_node_or_null(str(id)):
 		return  # вже існує (дублікат виклику) — нічого не робимо
 
-	print("[client spawn] режим=%s oasis=%s id=%d pos=%s" % [game_mode, str(_use_oasis), id, str(t.origin)])
+	print("[client spawn] mode=%s oasis=%s id=%d pos=%s" % [game_mode, str(_use_oasis), id, str(t.origin)])
 	var player := player_scene.instantiate()
 	player.name = str(id)
 	player.set_multiplayer_authority(id)

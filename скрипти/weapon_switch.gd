@@ -355,7 +355,7 @@ func _ready() -> void:
 		if found and found is Label:
 			ammo_label = found
 		else:
-			push_warning("ammo_label не знайдено ні в Інспекторі, ні по групі 'ammo_label'!")
+			push_warning("ammo_label not found in the Inspector or in group 'ammo_label'!")
 
 	ammo_in_mag = mag_size
 	reserve_ammo = mag_size * (mag_count - 1)
@@ -374,12 +374,12 @@ func _ready() -> void:
 	switch_weapon(Weapon.KNIFE)
 
 	if player_body == null:
-		push_warning("Не знайдено CharacterBody3D серед предків — розкид у стрибку/русі не працюватиме!")
+		push_warning("No CharacterBody3D found among ancestors — spread while jumping/moving will not work!")
 
 	if crosshair:
 		crosshair_base_position = crosshair.position
 	else:
-		push_warning("crosshair не призначено в інспекторі — приціл не буде рухатись!")
+		push_warning("crosshair is not assigned in the Inspector — the crosshair will not move!")
 
 
 func _has_authority() -> bool:
@@ -752,7 +752,7 @@ func _knife_attack_rpc() -> void:
 		return
 
 	if not knife_attack_anim:
-		push_warning("knife_attack_anim (AnimationPlayer 'удар') не знайдено!")
+		push_warning("knife_attack_anim (AnimationPlayer 'удар') not found!")
 		return
 
 	if _has_authority():
@@ -770,7 +770,7 @@ func _knife_attack_rpc() -> void:
 	if attack_anim_name != "":
 		knife_attack_anim.play(attack_anim_name)
 	else:
-		push_warning("У AnimationPlayer 'удар' немає жодної анімації окрім RESET!")
+		push_warning("AnimationPlayer 'удар' has no animations other than RESET!")
 		if _has_authority():
 			is_attacking = false
 		return
@@ -807,7 +807,7 @@ func _inspect_weapon_rpc() -> void:
 		return
 
 	if not ak47_inspect_anim:
-		push_warning("ak47_inspect_anim (AnimationPlayer 'осмотр') не знайдено!")
+		push_warning("ak47_inspect_anim (AnimationPlayer 'осмотр') not found!")
 		return
 
 	var inspect_anim_name: String = ""
@@ -817,7 +817,7 @@ func _inspect_weapon_rpc() -> void:
 			break
 
 	if inspect_anim_name == "":
-		push_warning("У AnimationPlayer 'осмотр' немає жодної анімації окрім RESET!")
+		push_warning("AnimationPlayer 'осмотр' has no animations other than RESET!")
 		return
 
 	ak47_inspect_anim.stop()
@@ -960,12 +960,12 @@ func _get_or_create_m4_muzzle_flash() -> Sprite3D:
 		return _m4_muzzle_flash
 
 	if not ResourceLoader.exists(MUZZLE_FLASH_TEXTURE_PATH):
-		push_warning("Не знайдено текстуру спалаху M4: %s" % MUZZLE_FLASH_TEXTURE_PATH)
+		push_warning("M4 muzzle flash texture not found: %s" % MUZZLE_FLASH_TEXTURE_PATH)
 		return null
 
 	var texture := load(MUZZLE_FLASH_TEXTURE_PATH) as Texture2D
 	if texture == null:
-		push_warning("Не вдалося завантажити текстуру спалаху M4: %s" % MUZZLE_FLASH_TEXTURE_PATH)
+		push_warning("Failed to load M4 muzzle flash texture: %s" % MUZZLE_FLASH_TEXTURE_PATH)
 		return null
 
 	var flash := Sprite3D.new()
@@ -1118,12 +1118,12 @@ func _get_or_create_muzzle_flash(is_sniper: bool) -> Sprite3D:
 		return flash
 
 	if not ResourceLoader.exists(MUZZLE_FLASH_TEXTURE_PATH):
-		push_warning("Не знайдено текстуру спалаху: %s" % MUZZLE_FLASH_TEXTURE_PATH)
+		push_warning("Muzzle flash texture not found: %s" % MUZZLE_FLASH_TEXTURE_PATH)
 		return null
 
 	var texture := load(MUZZLE_FLASH_TEXTURE_PATH) as Texture2D
 	if texture == null:
-		push_warning("Не вдалося завантажити текстуру спалаху: %s" % MUZZLE_FLASH_TEXTURE_PATH)
+		push_warning("Failed to load muzzle flash texture: %s" % MUZZLE_FLASH_TEXTURE_PATH)
 		return null
 
 	flash = Sprite3D.new()
@@ -1435,7 +1435,7 @@ func _add_killfeed_entry(killer: String, weapon_name: String, headshot: bool, vi
 	panel.add_child(row)
 	row.add_child(_kill_label(killer, 20, Color(1.0, 0.85, 0.3) if killer_is_me else Color.WHITE))
 	# Замість слів — іконки: постріл (куля) або ніж, і голова при хедшоті.
-	row.add_child(_make_kill_icon(KillIcon.Kind.KNIFE if weapon_name == "Ніж" else KillIcon.Kind.BULLET))
+	row.add_child(_make_kill_icon(KillIcon.Kind.KNIFE if weapon_name == "Knife" else KillIcon.Kind.BULLET))
 	if headshot:
 		row.add_child(_make_kill_icon(KillIcon.Kind.HEAD))
 	row.add_child(_kill_label(victim, 20, Color(1.0, 0.85, 0.3) if victim_is_me else Color(1.0, 0.45, 0.45)))
@@ -1494,7 +1494,7 @@ func _weapon_display_name(weapon: int) -> String:
 			return "AWP"
 		Weapon.M4:
 			return "M4"
-	return "Ніж"
+	return "Knife"
 
 
 # Червоний хрестик по центру екрана: «вистрибує» і тане.
@@ -1798,13 +1798,13 @@ const AK_SKIN_TEXTURES := {
 	"ak47_void_lightning": preload("res://skins/ak47_void_lightning.png"),
 	"ak47_inferno": preload("res://skins/ak47_inferno.png"),
 	"ak47_emerald_dragon": preload("res://skins/ak47_emerald_dragon.png"),
-	"awp_amber_carbon": preload("res://skins/awp_amber_carbon.png"),
-	"awp_desert_tactical": preload("res://skins/awp_desert_tactical.png"),
-	"awp_emerald_silver": preload("res://skins/awp_emerald_silver.png"),
-	"awp_frost_splinter": preload("res://skins/awp_frost_splinter.png"),
-	"awp_cobalt_chrome": preload("res://skins/awp_cobalt_chrome.png"),
-	"awp_obsidian_violet": preload("res://skins/awp_obsidian_violet.png"),
-	"awp_blood_scales": preload("res://skins/awp_blood_scales.png"),
+	"awp_amber_carbon": preload("res://skins/fit/awp_amber_carbon.png"),
+	"awp_desert_tactical": preload("res://skins/fit/awp_desert_tactical.png"),
+	"awp_emerald_silver": preload("res://skins/fit/awp_emerald_silver.png"),
+	"awp_frost_splinter": preload("res://skins/fit/awp_frost_splinter.png"),
+	"awp_cobalt_chrome": preload("res://skins/fit/awp_cobalt_chrome.png"),
+	"awp_obsidian_violet": preload("res://skins/fit/awp_obsidian_violet.png"),
+	"awp_blood_scales": preload("res://skins/fit/awp_blood_scales.png"),
 }
 var _ak_default_overrides: Dictionary = {}   # MeshInstance3D -> стандартний material_override (щоб скін можна було зняти)
 
@@ -1853,6 +1853,10 @@ func _apply_weapon_skin(root: Node3D, skin_id: String) -> void:
 	mat.set_shader_parameter("side_axis", side_axis)
 	mat.set_shader_parameter("u_range", _axis_range(box, u_axis))
 	mat.set_shader_parameter("v_range", _axis_range(box, v_axis))
+	if skin_id.begins_with("awp_"):   # AWP: світліше й без зайвого затемнення (так само, як у магазині)
+		mat.set_shader_parameter("brightness", 1.3)
+		mat.set_shader_parameter("saturation", 1.08)
+		mat.set_shader_parameter("gamma_value", 1.0)
 	for mi in meshes:
 		(mi as MeshInstance3D).material_override = mat
 
@@ -2026,7 +2030,7 @@ func _bolisong_inspect() -> void:
 	if not bolisong_anim.has_animation(anim_name):
 		anim_name = _find_anim(bolisong_anim, ["inspect"])
 	if anim_name == "":
-		push_warning("У bolisong/AnimationPlayer немає анімації Inspect_Rollover!")
+		push_warning("bolisong/AnimationPlayer has no Inspect_Rollover animation!")
 		return
 
 	bolisong_anim.stop()
@@ -2094,7 +2098,7 @@ func _butterfly_inspect() -> void:
 	if not butterfly_anim.has_animation(anim_name):
 		anim_name = _find_anim(butterfly_anim, ["valorant", "inspect"])
 	if anim_name == "":
-		push_warning("У butterfly/AnimationPlayer немає анімації Inspect_Valorant!")
+		push_warning("butterfly/AnimationPlayer has no Inspect_Valorant animation!")
 		return
 
 	_butterfly_cancel()
@@ -2219,7 +2223,7 @@ func _knife_inspect_cancel() -> void:
 
 func _knife_inspect() -> void:
 	if not knife_inspect_anim:
-		push_warning("knife_inspect_anim (AnimationPlayer 'осмотр' у Karanbit) не знайдено!")
+		push_warning("knife_inspect_anim (AnimationPlayer 'осмотр' in Karanbit) not found!")
 		return
 
 	var anim_name: String = ""
@@ -2228,7 +2232,7 @@ func _knife_inspect() -> void:
 			anim_name = n
 			break
 	if anim_name == "":
-		push_warning("У Karanbit/осмотр немає жодної анімації окрім RESET!")
+		push_warning("Karanbit/осмотр has no animations other than RESET!")
 		return
 
 	_knife_inspect_cancel()
@@ -2273,20 +2277,24 @@ func _setup_bomb() -> void:
 	bomb_holder = get_node_or_null("bomb") as Node3D
 	if bomb_holder == null:
 		if not ResourceLoader.exists(BOMB_MODEL_PATH):
-			push_warning("Модель бомби %s не знайдена — слот 4 (C4) вимкнено." % BOMB_MODEL_PATH)
+			push_warning("Bomb model %s not found — slot 4 (C4) disabled." % BOMB_MODEL_PATH)
 			return
 		var packed := load(BOMB_MODEL_PATH) as PackedScene
 		var model: Node3D = null
 		if packed:
 			model = packed.instantiate() as Node3D
 		if model == null:
-			push_warning("Модель бомби не вдалось завантажити — слот 4 (C4) вимкнено.")
+			push_warning("Failed to load the bomb model — slot 4 (C4) disabled.")
 			return
 		bomb_holder = Node3D.new()
 		bomb_holder.name = "bomb"
 		add_child(bomb_holder)
 		model.position = Vector3(0.0, -0.035, 0.0)   # центруємо модель (її початок — по центру низу)
 		bomb_holder.add_child(model)
+		for part in ["c4_antenna", "c4_antenna_tip"]:   # антена в моделі висить у повітрі — ховаємо
+			var an := model.find_child(part, true, false)
+			if an is Node3D:
+				(an as Node3D).visible = false
 		bomb_holder.position = bomb_hold_position
 		bomb_holder.rotation_degrees = bomb_hold_rotation_deg
 		bomb_holder.scale = Vector3.ONE * bomb_hold_scale
@@ -2308,11 +2316,11 @@ func _setup_m4() -> void:
 					packed = load(path) as PackedScene
 					break
 		if packed == null:
-			push_warning("Модель M4A1 не знайдена (шукав вузол 'm4' у камері та %s) — M4 вимкнено." % str(M4_MODEL_PATHS))
+			push_warning("M4A1 model not found (looked for node 'm4' in the camera and %s) — M4 disabled." % str(M4_MODEL_PATHS))
 			return
 		var model := packed.instantiate() as Node3D
 		if model == null:
-			push_warning("Модель M4A1 не вдалось завантажити як Node3D.")
+			push_warning("Failed to load the M4A1 model as Node3D.")
 			return
 		m4_holder = Node3D.new()
 		m4_holder.name = "m4"
@@ -2426,11 +2434,11 @@ func _setup_sniper() -> void:
 					packed = load(path) as PackedScene
 					break
 		if packed == null:
-			push_warning("Модель снайперки не знайдена (шукав вузол 'awp' у камері та %s) — слот 3 вимкнено." % str(SNIPER_MODEL_PATHS))
+			push_warning("Sniper model not found (looked for node 'awp' in the camera and %s) — slot 3 disabled." % str(SNIPER_MODEL_PATHS))
 			return
 		var model := packed.instantiate() as Node3D
 		if model == null:
-			push_warning("Модель снайперки не вдалось завантажити як Node3D.")
+			push_warning("Failed to load the sniper model as Node3D.")
 			return
 		sniper_holder = Node3D.new()
 		sniper_holder.name = "AWP"
@@ -2448,7 +2456,7 @@ func _setup_sniper() -> void:
 	_sniper_disable_shadows(sniper_holder)
 	sniper_anim = _find_sniper_anim_player(sniper_holder)
 	if sniper_anim == null:
-		push_warning("AnimationPlayer снайперки не знайдено (очікую head/Camera3D/awp/AnimationPlayer) — AWP буде без анімацій.")
+		push_warning("Sniper AnimationPlayer not found (expected head/Camera3D/awp/AnimationPlayer) — AWP will have no animations.")
 	_sniper_pose_base = _capture_pose_base(sniper_anim)
 	_sniper_hold_base = _capture_sniper_hold_pose()
 	sniper_holder.visible = false
@@ -2672,7 +2680,7 @@ func _sniper_hold_pose() -> void:
 # Осмотр (клавіша F): анімація "view".
 func _sniper_inspect() -> void:
 	if sniper_anim == null or not sniper_anim.has_animation(SNIPER_ANIM_VIEW):
-		push_warning("У AnimationPlayer снайперки немає анімації \"%s\"." % SNIPER_ANIM_VIEW)
+		push_warning("The sniper AnimationPlayer has no animation \"%s\"." % SNIPER_ANIM_VIEW)
 		return
 	var duration: float = _sniper_play(SNIPER_ANIM_VIEW)
 	var my_id: int = _sniper_inspect_id
@@ -2727,7 +2735,7 @@ func _setup_weapon_menu() -> void:
 	margin.add_child(vbox)
 
 	var title := Label.new()
-	title.text = "Основна зброя (слот 1)"
+	title.text = "Primary weapon (slot 1)"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 28)
 	vbox.add_child(title)
@@ -2745,7 +2753,7 @@ func _setup_weapon_menu() -> void:
 		_weapon_menu_buttons[entry[0]] = [b, entry[1]]
 
 	var hint := Label.new()
-	hint.text = "E — закрити   |   1 — основна, 3 — ніж"
+	hint.text = "E — close   |   1 — primary, 3 — knife"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	vbox.add_child(hint)
 
@@ -2761,10 +2769,10 @@ func _refresh_weapon_menu() -> void:
 		b.text = ("✓ " if picked else "") + label
 		if w == Weapon.SNIPER and sniper_holder == null:
 			b.disabled = true
-			b.text = label + " (немає моделі)"
+			b.text = label + " (no model)"
 		if w == Weapon.M4 and m4_holder == null:
 			b.disabled = true
-			b.text = label + " (немає моделі)"
+			b.text = label + " (no model)"
 
 
 func _open_weapon_menu() -> void:
@@ -2968,6 +2976,10 @@ func _toggle_hands() -> void:
 	GameSettings.left_handed = not GameSettings.left_handed
 	GameSettings.save_settings()
 	_apply_hand_flip()
+	# Як у CS2 (switchhands): після зміни руки зброя дістається заново — граємо анімацію draw з початку.
+	# Не чіпаємо, якщо йде удар ножем / перезарядка, щоб не обірвати їх, і коли гравець мертвий.
+	if not is_attacking and not is_reloading and not _is_player_dead():
+		_replay_draw()
 
 
 func _apply_hand_flip() -> void:
@@ -3019,7 +3031,7 @@ func _m9_stop() -> void:
 func _m9_inspect() -> void:
 	var anim_name: String = _find_anim(m9_anim, ["view", "inspect"])
 	if anim_name == "":
-		push_warning("У m9bayonet/AnimationPlayer немає анімації view!")
+		push_warning("m9bayonet/AnimationPlayer has no view animation!")
 		return
 	_m9_stop()
 	var my_id: int = _m9_action_id

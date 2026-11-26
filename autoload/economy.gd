@@ -44,13 +44,13 @@ const WEAPON_SKINS := {
 	"ak47_void_lightning": {"weapon": "ak47", "name": "AK-47 | Блискавка порожнечі", "skin": "Блискавка порожнечі", "price": 0, "rarity": "pink", "case_only": true},
 	"ak47_inferno": {"weapon": "ak47", "name": "AK-47 | Інферно", "skin": "Інферно", "price": 0, "rarity": "red", "case_only": true},
 	"ak47_emerald_dragon": {"weapon": "ak47", "name": "AK-47 | Смарагдовий дракон", "skin": "Смарагдовий дракон", "price": 0, "rarity": "red", "case_only": true},
-	"awp_amber_carbon": {"weapon": "awp", "name": "AWP | Бурштиновий карбон", "skin": "Бурштиновий карбон", "price": 0, "rarity": "blue", "case_only": true},
+	"awp_amber_carbon": {"weapon": "awp", "name": "AWP | Кобальтовий хром", "skin": "Кобальтовий хром", "price": 0, "rarity": "blue", "case_only": true},
 	"awp_desert_tactical": {"weapon": "awp", "name": "AWP | Пустельна тактика", "skin": "Пустельна тактика", "price": 0, "rarity": "blue", "case_only": true},
 	"awp_emerald_silver": {"weapon": "awp", "name": "AWP | Смарагдове срібло", "skin": "Смарагдове срібло", "price": 0, "rarity": "blue", "case_only": true},
 	"awp_frost_splinter": {"weapon": "awp", "name": "AWP | Крижаний уламок", "skin": "Крижаний уламок", "price": 0, "rarity": "purple", "case_only": true},
-	"awp_cobalt_chrome": {"weapon": "awp", "name": "AWP | Кобальтовий хром", "skin": "Кобальтовий хром", "price": 0, "rarity": "purple", "case_only": true},
+	"awp_cobalt_chrome": {"weapon": "awp", "name": "AWP | Кривава луска", "skin": "Кривава луска", "price": 0, "rarity": "red", "case_only": true},
 	"awp_obsidian_violet": {"weapon": "awp", "name": "AWP | Обсидіан-фіолет", "skin": "Обсидіан-фіолет", "price": 0, "rarity": "pink", "case_only": true},
-	"awp_blood_scales": {"weapon": "awp", "name": "AWP | Кривава луска", "skin": "Кривава луска", "price": 0, "rarity": "red", "case_only": true},
+	"awp_blood_scales": {"weapon": "awp", "name": "AWP | Бурштиновий карбон", "skin": "Бурштиновий карбон", "price": 0, "rarity": "purple", "case_only": true},
 }
 const SKIN_ORDER := ["ak47_samurai", "ak47_cyber_circuit", "ak47_arctic_tactical", "ak47_crimson_filigree", "awp_samurai",
 		"ak47_arctic_frost", "ak47_desert_warfare", "ak47_hazard_strike", "ak47_ocean_wave", "ak47_neon_circuit", "ak47_titanium_ghost", "ak47_royal_filigree", "ak47_void_lightning", "ak47_inferno", "ak47_emerald_dragon",
@@ -79,7 +79,7 @@ const CASE_ORDER := ["emerald_dragon", "sniper"]
 
 # Шанси за рідкістю (у %, нормалізуються серед тих рідкостей, що є в кейсі). Усередині рідкості — рівно.
 const RARITY_ORDER := ["blue", "purple", "pink", "red", "gold"]
-const RARITY_WEIGHTS := {"blue": 68.0, "purple": 20.0, "pink": 8.0, "red": 3.0, "gold": 1.0}
+const RARITY_WEIGHTS := {"blue": 35.0, "purple": 25.0, "pink": 18.0, "red": 12.0, "gold": 10.0}   # gold = ніж, 10%
 const RARITY_NAMES := {"blue": "АРМІЙСЬКИЙ", "purple": "ОБМЕЖЕНИЙ", "pink": "ЗАСЕКРЕЧЕНИЙ", "red": "ТАЄМНИЙ", "gold": "РІДКІСНИЙ (НІЖ)"}
 # Якщо випав предмет, який уже є — повертаємо коїни (ніж: половина ціни).
 const DUPLICATE_REFUND := {"blue": 10, "purple": 20, "pink": 40, "red": 90}

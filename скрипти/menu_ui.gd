@@ -60,16 +60,16 @@ func _build_left_panel() -> void:
 
 	box.add_child(_menu_button("1 × 1  —  CLASSIC", "primary", play_pressed))
 	box.add_child(_menu_button("2 × 2  —  WINGMAN", "ghost", two_vs_two_pressed))
-	box.add_child(_menu_button("ГРАТИ ПРОТИ БОТА", "ghost", bot_pressed))
-	box.add_child(_menu_button("МАГАЗИН", "ghost", shop_pressed))
-	box.add_child(_menu_button("НАЛАШТУВАННЯ", "ghost", settings_pressed))
+	box.add_child(_menu_button("PLAY VS BOT", "ghost", bot_pressed))
+	box.add_child(_menu_button("SHOP", "ghost", shop_pressed))
+	box.add_child(_menu_button("SETTINGS", "ghost", settings_pressed))
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(spacer)
 
 	var quit := Button.new()
-	quit.text = "ВИЙТИ"
+	quit.text = "QUIT"
 	quit.custom_minimum_size = Vector2(150, 46)
 	quit.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	Kit.style_button(quit, "dim", 18)
@@ -170,14 +170,14 @@ func _build_search_overlay() -> void:
 	var sp := Kit.Spinner.new()
 	sp.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(sp)
-	v.add_child(Kit.label("ПОШУК СУПЕРНИКА", 28, Kit.C_TEXT, true, HORIZONTAL_ALIGNMENT_CENTER, 2))
+	v.add_child(Kit.label("SEARCHING FOR OPPONENT", 28, Kit.C_TEXT, true, HORIZONTAL_ALIGNMENT_CENTER, 2))
 	_search_label = Kit.label("", 18, Kit.C_MUTED, false, HORIZONTAL_ALIGNMENT_CENTER, 0)
 	_search_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_search_label.custom_minimum_size = Vector2(500, 52)
 	v.add_child(_search_label)
 
 	var cancel := Button.new()
-	cancel.text = "СКАСУВАТИ"
+	cancel.text = "CANCEL"
 	cancel.custom_minimum_size = Vector2(220, 52)
 	cancel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	Kit.style_button(cancel, "ghost", 22)
